@@ -274,10 +274,11 @@ foreach ($students_list as $std) {
     $banner_right = !empty($settings['banner_right_image']) ? $settings['banner_right_image'] : 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=600';
     ?>
     <section class="relative bg-slate-900 overflow-hidden min-h-[460px] flex items-center py-12 md:py-16">
-        <div class="absolute inset-0 z-0">
-            <img src="<?php echo htmlspecialchars($banner_bg); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-30 filter brightness-50" referrerPolicy="no-referrer">
+        <!-- ปรับย้ายพื้นที่ภาพพื้นหลังแบนเนอร์ไปทางขวาสุดและไล่สีเฟดออกทางซ้ายเพื่อถนมสายตาและเน้นความสวยงามร่วมสมัย -->
+        <div class="absolute inset-y-0 right-0 w-full lg:w-3/5 z-0">
+            <img src="<?php echo htmlspecialchars($banner_bg); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-35 lg:opacity-55 filter brightness-95" referrerPolicy="no-referrer">
         </div>
-        <div class="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-school-pink-dark/50 z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-transparent z-10 pointer-events-none"></div>
         
         <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12 w-full text-white">
             <div class="space-y-6 max-w-2xl">

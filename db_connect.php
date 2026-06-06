@@ -31,6 +31,15 @@ try {
     
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 
+    // ตรวจสอบเช็คสร้างไดเรกทอรีและจัดแจงสิทธิ์เพื่อให้เซิร์ฟเวอร์เขียนข่าวสารและไฟล์ภาพอัปพอร์ตได้อย่างสมบูรณ์แบบ
+    $dirs_to_heal = ['uploads', 'uploads/images', 'uploads/pdfs', 'uploads/documents'];
+    foreach ($dirs_to_heal as $heal_dir) {
+        if (!file_exists($heal_dir)) {
+            mkdir($heal_dir, 0777, true);
+        }
+        @chmod($heal_dir, 0777);
+    }
+
 } catch (PDOException $e) {
     // บันทึกรายงานข้อผิดพลาดและแสดงแจ้งเตือนความคืบหน้าอย่างละเอียด
     error_log($e->getMessage());

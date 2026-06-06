@@ -157,4 +157,21 @@ if (!defined('DB_HOST')) {
             </button>
         </div>
     </form>
+
+    <!-- บล็อกระบบเครื่องมือกู้คืนข้อมูลเริ่มต้นสำหรับผู้ดูแลระบบ -->
+    <div class="mt-12 bg-pink-50/20 border border-pink-100 rounded-3xl p-6 space-y-4">
+        <div class="flex items-center gap-2 border-b border-pink-100 pb-2">
+            <span class="text-lg">⚙️</span>
+            <span class="font-heading font-black text-xs sm:text-sm text-slate-850">เครื่องมือสารสนเทศสำหรับป้อนตัวอย่าง (Developer & Administrator Tools)</span>
+        </div>
+        <p class="text-xs text-slate-500 leading-relaxed font-semibold">
+            หากคุณรู้สึกว่าแถบตาราง เช่น <strong class="text-slate-700">รายชื่อนักเรียน สถิติการศึกษา</strong> หรือ <strong class="text-slate-700">สื่อคลังงานครู</strong> ดูว่างเปล่าหรือต้องการฟื้นฟูระบบ คุณสามารถกดคลิกปุ่มด้านล่างเพื่อทำการเคลียร์ตารางและป้อนข้อมูลสถิติตัวอย่างทั้งหมดของโรงเรียนบ้านหนองหว้ากลับมาได้ทันทีอย่างรวดเร็ว
+        </p>
+        <form action="admin.php?tab=general" method="POST" onsubmit="return confirm('⚠️ คำเตือน! การทำงานนี้จะลบข้อมูลอื่นๆ ในตารางทั้งหมด และกู้คืนกลับมาเป็นข้อมูลประวัติโรงเรียนเริ่มต้นตามคู่มือแบบดั้งเดิมเซ็ตอัพ คุณต้องการดำเนินการต่อหรือไม่?');">
+            <input type="hidden" name="reset_database_defaults" value="1">
+            <button type="submit" class="bg-pink-600 hover:bg-pink-700 text-white font-black px-6 py-3.5 rounded-2xl transition shadow-md text-xs inline-flex items-center gap-2 cursor-pointer">
+                🔄 รีเซ็ตกู้คืนข้อมูลตัวอย่างพื้นฐานโรงเรียนคืนสู่ตารางทั้งหมด (Restore Defaults)
+            </button>
+        </form>
+    </div>
 </div>

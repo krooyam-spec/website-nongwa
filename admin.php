@@ -93,28 +93,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
         $banner_bg_image = $existing_sets['banner_bg_image'] ?? '';
         $banner_right_image = $existing_sets['banner_right_image'] ?? '';
         
+        $upload_warnings = [];
+
         // อัปโหลดโลโก้โรงเรียน
         if (isset($_FILES['school_logo_file']) && $_FILES['school_logo_file']['error'] === UPLOAD_ERR_OK) {
             $uploaded_logo = uploadFileToServer($_FILES['school_logo_file'], 'jpg,jpeg,png,gif');
-            if ($uploaded_logo) $school_logo = $uploaded_logo;
-        } else if (!empty($_POST['school_logo_url'])) {
-            $school_logo = cleanInput($_POST['school_logo_url']);
+            if ($uploaded_logo) {
+                $school_logo = $uploaded_logo;
+            } else {
+                $upload_warnings[] = "โลโก้โรงเรียน";
+            }
+        } else {
+            $school_logo = isset($_POST['school_logo_url']) ? cleanInput($_POST['school_logo_url']) : '';
         }
         
         // อัปโหลดภาพแบนเนอร์พื้นหลังหลัก
         if (isset($_FILES['banner_bg_file']) && $_FILES['banner_bg_file']['error'] === UPLOAD_ERR_OK) {
             $uploaded_bg = uploadFileToServer($_FILES['banner_bg_file'], 'jpg,jpeg,png,gif');
-            if ($uploaded_bg) $banner_bg_image = $uploaded_bg;
-        } else if (!empty($_POST['banner_bg_url'])) {
-            $banner_bg_image = cleanInput($_POST['banner_bg_url']);
+            if ($uploaded_bg) {
+                $banner_bg_image = $uploaded_bg;
+            } else {
+                $upload_warnings[] = "ภาพพื้นหลังแบนเนอร์";
+            }
+        } else {
+            $banner_bg_image = isset($_POST['banner_bg_url']) ? cleanInput($_POST['banner_bg_url']) : '';
         }
         
         // อัปโหลดภาพประดับขวาแบนเนอร์หลัก
         if (isset($_FILES['banner_right_file']) && $_FILES['banner_right_file']['error'] === UPLOAD_ERR_OK) {
             $uploaded_right = uploadFileToServer($_FILES['banner_right_file'], 'jpg,jpeg,png,gif');
-            if ($uploaded_right) $banner_right_image = $uploaded_right;
-        } else if (!empty($_POST['banner_right_url'])) {
-            $banner_right_image = cleanInput($_POST['banner_right_url']);
+            if ($uploaded_right) {
+                $banner_right_image = $uploaded_right;
+            } else {
+                $upload_warnings[] = "ภาพไฮไลท์ขวาแบนเนอร์";
+            }
+        } else {
+            $banner_right_image = isset($_POST['banner_right_url']) ? cleanInput($_POST['banner_right_url']) : '';
         }
 
         $stmt = $pdo->prepare("UPDATE `settings` SET 
@@ -162,8 +176,135 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
         ]);
 
         $success_alert = 'อัปเดตข้อมูลทั่วไปของสถานศึกษาโรงเรียนบ้านหนองหว้าเรียบร้อยแล้ว!';
+        if (!empty($upload_warnings)) {
+            $success_alert .= ' (⚠️ แต่ไม่สามารถสลับดึงรูปอัปโหลดจริงของ ' . implode(', ', $upload_warnings) . ' ได้ เนื่องจากขนาดไฟล์เกินขีดจำกัด PHP php.ini หรือสิทธิ์เขียนเว็บมีจำกัด ระบบจึงประทับใช้ค่าเดิมหรือ URL ตรงที่มีอยู่แทน)';
+        }
     } catch (Exception $e) {
         $err_alert = 'เกิดข้อผิดพลาดในการบันทึกข้อมูลทั่วไป: ' . $e->getMessage();
+    }
+}
+
+// ค. การสั่งรีเซ็ตกู้คืนฐานข้อมูลตัวอย่างเริ่มต้น (On-demand Seed Restore)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_database_defaults'])) {
+    try {
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+        $pdo->exec("TRUNCATE TABLE `settings`;");
+        $pdo->exec("TRUNCATE TABLE `banners`;");
+        $pdo->exec("TRUNCATE TABLE `news`;");
+        $pdo->exec("TRUNCATE TABLE `teachers`;");
+        $pdo->exec("TRUNCATE TABLE `students`;");
+        $pdo->exec("TRUNCATE TABLE `downloads`;");
+        $pdo->exec("TRUNCATE TABLE `student_stats`;");
+        $pdo->exec("TRUNCATE TABLE `student_yearly_stats`;");
+        $pdo->exec("TRUNCATE TABLE `external_links`;");
+        $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
+    } catch (Exception $ex2) {
+        try {
+            $pdo->exec("DELETE FROM `settings`;");
+            $pdo->exec("DELETE FROM `banners`;");
+            $pdo->exec("DELETE FROM `news`;");
+            $pdo->exec("DELETE FROM `teachers`;");
+            $pdo->exec("DELETE FROM `students`;");
+            $pdo->exec("DELETE FROM `downloads`;");
+            $pdo->exec("DELETE FROM `student_stats`;");
+            $pdo->exec("DELETE FROM `student_yearly_stats`;");
+            $pdo->exec("DELETE FROM `external_links`;");
+        } catch (Exception $ex3) {}
+    }
+
+    try {
+        $pdo->exec("INSERT INTO `settings` 
+            (`id`, `school_name`, `short_name`, `address`, `phone`, `email`, `jurisdiction`, `levels`, `director_name`, `director_title`, `director_image`, `visitor_count`, `school_theme_color`, `school_motto`, `youtube_intro_url`, `banner_title`, `banner_subtitle`, `director_message_title`, `director_message`, `current_academic_year`) 
+            VALUES 
+            (1, 'โรงเรียนบ้านหนองหว้า', 'ร.ร.บ้านหนองหว้า', 'หมู่ที่ 2 บ้านหนองหว้า ตำบลหนองกี่ อำเภอหนองกี่ จังหวัดบุรีรัมย์ 31210', '044-641123', 'bannongwaschool@gmail.com', 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาบุรีรัมย์ เขต 3', 'ระดับปฐมวัย (อนุบาล 2-3) ถึงระดับชั้นประถมศึกษาปีที่ 6', 'นายอำนวย ยอดครูใหญ่', 'ผู้อำนวยการโรงเรียนบ้านหนองหว้า', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300', 15422, 'pink-white', 'ชมพู-ขาว ก้าวไกลวิชาการ', 'https://www.youtube.com/embed/gCOk8X63Rpk', 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ', 'เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น:', 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี', '\"โรงเรียนบ้านหนองหว้า ขอตลับใจเป็นพันธมิตรร่วมกับชุมชน ผู้ปกครอง เพื่อขับเคลื่อนและสร้างสรรค์โอกาสทางวิชาการและวิชาชีพแก่นักเรียน สู่ความพร้อมในการปฏิสัมพันธ์และดำรงชีพในศตวรรษที่ 21 เรามุ่งเสกสร้างสภาพแวดล้อมที่สะอาด ปลอดภัย เพื่อเสริมองค์ความรู้อย่างบูรณาการสูงสุด\"', '2569');");
+
+        $pdo->exec("INSERT INTO `banners` (`id`, `title`, `subtitle`, `image_url`, `active`) VALUES 
+            (1, 'ยินดีต้อนรับสู่ โรงเรียนบ้านหนองหว้า', 'แหล่งวิทยาการ กีฬาเด่น เน้นคุณธรรม สัมพันธ์ชุมชน', 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1200', 1),
+            (2, 'เปิดรับสมัครเรียน ปีการศึกษา 2569', 'ตั้งแต่ชั้น อนุบาล 1 ถึง ชั้นประถมศึกษาปีที่ 6', 'https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&q=80&w=1200', 1);");
+
+        $pdo->exec("INSERT INTO `news` (`id`, `title`, `category`, `content`, `summary`, `image_url`, `views`, `date`, `sticky_flag`) VALUES 
+            (1, 'ประกาศเปิดเรียนภาคเรียนที่ 1 ปีการศึกษา 2569 อย่างเป็นทางการ', 'ประชาสัมพันธ์ทั่วไป', 'โรงเรียนบ้านหนองหว้า ขอประกาศกำหนดการเปิดภาคเรียนที่ 1 ปีการศึกษา 2569 ในวันที่ 16 พฤษภาคม 2569 ขอความกรุณาผู้ปกครองเตรียมความพร้อมของนักเรียนในเรื่องของเครื่องแบบ อุปกรณ์การเรียน และสุขอนามัย ทางโรงเรียนได้ทำความสะอาดฉีดพ่นฆ่าเชื้อและเตรียมอาคารสถานที่เรียบร้อยแล้ว', 'ประกาศอย่างเป็นทางการเปิดภาคเรียนที่ 1 ปีการศึกษา 2569 ในวันที่ 16 พฤษภาคม 2569 พร้อมทั้งเตรียมความสะอาดของอาคารสถานที่และการดูแลความปลอดภัยในทุกด้าน', 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=600', 312, '2026-05-10', 1);");
+
+        $pdo->exec("INSERT INTO `teachers` (`id`, `name`, `position`, `level`, `subject_group`, `image_url`, `sort_order`) VALUES 
+            (1, 'นายอำนวย ยอดครูใหญ่', 'ผู้อำนวยการโรงเรียนบ้านหนองหว้า', 'ผู้อำนวยการโรงเรียน (คศ.3)', 'ผู้บริหาร', 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300', 1),
+            (2, 'นางสมศรี ปัญญาไว', 'ครูวิชาการระดับประถม / ครูประจำชั้นประถมศึกษาปีที่ 6', 'ครูชำนาญการพิเศษ (คศ.3)', 'วิชาการคณิตศาสตร์', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300', 2);");
+
+        $pdo->exec("INSERT INTO `students` (`id`, `name`, `grade`, `classroom`, `gender`) VALUES 
+            (1, 'เด็กชายจิรายุ สมพงษ์', 'ประถมศึกษาปีที่ 6', '6/1', 'ชาย'),
+            (2, 'เด็กหญิงรัตนาภรณ์ แสนดี', 'ประถมศึกษาปีที่ 6', '6/1', 'หญิง'),
+            (3, 'เด็กหญิงนภัสสร แก้วมณี', 'ประถมศึกษาปีที่ 5', '5/1', 'หญิง'),
+            (4, 'เด็กชายชินดนัย มีสุข', 'ประถมศึกษาปีที่ 4', '4/1', 'ชาย'),
+            (5, 'เด็กหญิงพิชชาภา เกิดดี', 'ประถมศึกษาปีที่ 3', '3/1', 'หญิง'),
+            (6, 'เด็กหญิงกานต์พิชชา ผลเจริญ', 'ประถมศึกษาปีที่ 2', '2/1', 'หญิง'),
+            (7, 'เด็กชายอนุรักษ์ รักเรียน', 'ประถมศึกษาปีที่ 1', '1/1', 'ชาย'),
+            (8, 'เด็กหญิงมัทนา งามศิลป์', 'อนุบาล 3', 'อ.3/1', 'หญิง');");
+
+        $pdo->exec("INSERT INTO `downloads` (`id`, `title`, `category`, `file_type`, `file_size`, `download_count`, `uploaded_date`, `file_url`) VALUES 
+            (1, 'ใบสมัครเข้าศึกษาต่อ ระดับชั้นอนุบาลและประถมศึกษา โรงเรียนบ้านหนองหว้า', 'เอกสารทั่วไป', 'PDF', '1.2 MB', 145, '2026-03-01', '#'),
+            (2, 'แผนพัฒนาการศึกษา 5 ปี (พ.ศ. 2568 - 2572) โรงเรียนบ้านหนองหว้า', 'แผนงานและนโยบาย', 'PDF', '4.5 MB', 56, '2026-02-15', '#');");
+
+        $pdo->exec("INSERT INTO `student_stats` (`grade_name`, `student_count`) VALUES 
+            ('อนุบาล 2', 45),
+            ('อนุบาล 3', 48),
+            ('ประถมศึกษาปีที่ 1', 56),
+            ('ประถมศึกษาปีที่ 2', 52),
+            ('ประถมศึกษาปีที่ 3', 54),
+            ('ประถมศึกษาปีที่ 4', 59),
+            ('ประถมศึกษาปีที่ 5', 58),
+            ('ประถมศึกษาปีที่ 6', 60);");
+
+        $initial_yearly_stats = [
+            ['year' => '2566', 'grade' => 'อนุบาล 2', 'count' => 40],
+            ['year' => '2566', 'grade' => 'อนุบาล 3', 'count' => 42],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 50],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 48],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 50],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 52],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 51],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 53],
+            ['year' => '2567', 'grade' => 'อนุบาล 2', 'count' => 42],
+            ['year' => '2567', 'grade' => 'อนุบาล 3', 'count' => 44],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 52],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 50],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 52],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 55],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 54],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 56],
+            ['year' => '2568', 'grade' => 'อนุบาล 2', 'count' => 44],
+            ['year' => '2568', 'grade' => 'อนุบาล 3', 'count' => 46],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 54],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 52],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 54],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 57],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 56],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 58],
+            ['year' => '2569', 'grade' => 'อนุบาล 2', 'count' => 45],
+            ['year' => '2569', 'grade' => 'อนุบาล 3', 'count' => 48],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 56],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 52],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 54],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 59],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 58],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 60]
+        ];
+        $stmt_ins = $pdo->prepare("INSERT INTO `student_yearly_stats` (`academic_year`, `grade_name`, `student_count`) VALUES (:year, :grade, :count)");
+        foreach ($initial_yearly_stats as $stat) {
+            $stmt_ins->execute([
+                'year' => $stat['year'],
+                'grade' => $stat['grade'],
+                'count' => $stat['count']
+            ]);
+        }
+
+        $pdo->exec("INSERT INTO `external_links` (`id`, `title`, `description`, `url_link`, `image_url`, `category`) VALUES 
+            (1, 'ระบบคลังสื่อเทคโนโลยีสารสนเทศ OBEC Content Center', 'แหล่งรวบรวมสื่อการเรียนรู้ดิจิทัลหลากหลายประเภทสำหรับครูและนักเรียน', 'https://contentcenter.obec.go.th', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=300', 'สื่อการเรียนรู้'),
+            (2, 'ระบบสารสนเทศเพื่อการจัดการศึกษา EMIS', 'ระบบจัดเก็บข้อมูลนักเรียนรายบุคคลและสารสนเทศโรงเรียน', 'https://emis.obec.go.th', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=300', 'งานครูและลิงก์หน่วยงาน'),
+            (3, 'DLTV มูลนิธิการศึกษาทางไกลผ่านดาวเทียม', 'รับชมการเรียนการสอนทางไกลและดาวน์โหลดสื่อประกอบการสอนปฐมวัย-ประถม', 'https://www.dltv.ac.th', 'https://images.unsplash.com/photo-1516534775068-ba3e84589d90?auto=format&fit=crop&q=80&w=300', 'สื่อการเรียนรู้'),
+            (4, 'ระบบปัจจัยพื้นฐานนักเรียนยากจนพิเศษ CCT', 'บันทึกคุณลักษณะและการดำเนินงานจัดสรรงบประมาณช่วยเหลือนักเรียน', 'https://www.cct.or.th', 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=300', 'งานครูและลิงก์หน่วยงาน');");
+
+        $success_alert = '🔄 กู้คืนฐานข้อมูลมาตรฐานโรงเรียนบ้านหนองหว้าเรียบร้อยแล้ว! ทุกแผนผัง ตารางนักเรียน ระบบงานครู และหมวดสถิติได้รับการ Seeding คืนชีพอย่างสมบูรณ์แบบ';
+    } catch (Exception $e) {
+        $err_alert = 'เกิดข้อผิดพลาดในการกู้คืนฐานข้อมูลตัวอย่าง: ' . $e->getMessage();
     }
 }
 
