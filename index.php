@@ -78,14 +78,31 @@ try {
 
 // 4. ดึงสถิตินักเรียนรายปี/รายห้อง และเอกสารดาวน์โหลด
 $active_current_year = $settings['current_academic_year'] ?? '2569';
+$downloads_list = [];
+$students_list = [];
+$external_links_list = [];
 $student_stats = [];
 $yearly_comparison = [];
 
 try {
     $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->fetchAll();
+} catch (Exception $e) {
+    $downloads_list = [];
+}
+
+try {
     $students_list = $pdo->query("SELECT * FROM `students` ORDER BY `id` ASC")->fetchAll();
+} catch (Exception $e) {
+    $students_list = [];
+}
+
+try {
     $external_links_list = $pdo->query("SELECT * FROM `external_links` ORDER BY `id` ASC")->fetchAll();
-    
+} catch (Exception $e) {
+    $external_links_list = [];
+}
+
+try {
     // ดึงสถิตินักเรียนของปีการศึกษาปัจจุบันที่กำหนดในระบบ
     $yearly_stmt = $pdo->prepare("SELECT * FROM `student_yearly_stats` WHERE `academic_year` = :year ORDER BY `id` ASC");
     $yearly_stmt->execute(['year' => $active_current_year]);
@@ -95,15 +112,19 @@ try {
     if (empty($student_stats)) {
         $student_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
     }
-    
+} catch (Exception $e) {
+    try {
+        $student_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
+    } catch (Exception $ex) {
+        $student_stats = [];
+    }
+}
+
+try {
     // ดึงสรุปยอดรวมประจำแต่ละปีการศึกษาเพื่อนำส่งทำแผนภูมิเปรียบเทียบนักเรียนรายปีการศึกษา
     $yearly_comp_stmt = $pdo->query("SELECT `academic_year`, SUM(`student_count`) as total_count FROM `student_yearly_stats` GROUP BY `academic_year` ORDER BY `academic_year` ASC");
     $yearly_comparison = $yearly_comp_stmt->fetchAll();
 } catch (Exception $e) {
-    $downloads_list = [];
-    $students_list = [];
-    $student_stats = [];
-    $external_links_list = [];
     $yearly_comparison = [];
 }
 
@@ -256,9 +277,9 @@ foreach ($students_list as $std) {
         <div class="absolute inset-0 z-0">
             <img src="<?php echo htmlspecialchars($banner_bg); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-30 filter brightness-50" referrerPolicy="no-referrer">
         </div>
-        <div class="absolute inset-0 bg-gradient-to-l from-slate-950/95 via-slate-950/85 to-school-pink-dark/50 z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/85 to-school-pink-dark/50 z-10"></div>
         
-        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col-reverse lg:flex-row-reverse items-center justify-between gap-12 w-full text-white">
+        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12 w-full text-white">
             <div class="space-y-6 max-w-2xl">
                 <span class="inline-block bg-white text-school-pink text-[10px] tracking-widest uppercase font-black px-4 py-1.5 rounded-full shadow-lg">
                     <?php echo htmlspecialchars($settings['banner_title'] ?? 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ'); ?>
@@ -284,10 +305,10 @@ foreach ($students_list as $std) {
                 </div>
             </div>
 
-            <!-- ภาพที่ตั้งตังไว้ด้านซ้ายมือและปรับแก้ไขอัพโหลดไฟล์ได้ -->
+            <!-- ภาพที่ตั้งตังไว้ด้านขวามือและปรับแก้ไขอัพโหลดไฟล์ได้ -->
             <div class="hidden lg:block max-w-sm w-full relative z-20 animate-fade-in">
-                <div class="relative p-2 rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-2xl -rotate-2 hover:rotate-0 transition-transform duration-300">
-                    <img id="banner_right_img" src="<?php echo htmlspecialchars($banner_right); ?>" alt="Banner Left Highlight" class="w-full h-64 object-cover rounded-2xl shadow-inner border border-white/10" referrerPolicy="no-referrer">
+                <div class="relative p-2 rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-300">
+                    <img id="banner_right_img" src="<?php echo htmlspecialchars($banner_right); ?>" alt="Banner Right Highlight" class="w-full h-64 object-cover rounded-2xl shadow-inner border border-white/10" referrerPolicy="no-referrer">
                     <div class="absolute -bottom-3 -right-3 bg-pink-500 font-bold text-[10px] uppercase text-white px-3 py-1 rounded-full shadow-lg">
                         อัตลักษณ์ ชมพู-ขาว
                     </div>
