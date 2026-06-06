@@ -7,34 +7,47 @@
  * เพื่อติดตั้งตาราง ยอดผู้บริหา ข่าวสาร สถิติ และบุคลากรทั้งหมดเข้ามาในระบบสด
  */
 
-// 1. ดำเนินการเชื่อมต่อเพื่อรันระบบติดตั้ง
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'bannongwa_db');
+// 1. ดำเนินการเชื่องโยงการตั้งต่าฐานข้อมูลจาก db_connect.php โดยอัตโนมัติเพื่อความสะดวกและรวดเร็ว
+if (file_exists('db_connect.php')) {
+    require_once 'db_connect.php';
+} else {
+    define('DB_HOST', 'localhost');
+    define('DB_USER', 'schoolos_nongwa');
+    define('DB_PASS', '8$p5GfJqgwlv3!Or');
+    define('DB_NAME', 'schoolos_nongwa');
+}
 
 $message_log = [];
 $success = true;
 
 try {
-    // เชื่อมต่อ MySQL Server ก่อนเพื่อตั้งต้นฐานข้อมูล
-    $temp_dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
-    $temp_pdo = new PDO($temp_dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-    
-    // สร้างฐานข้อมูลหากยังไม่มีอยู่ในระบบโดยอัตโนมัติ
-    $temp_pdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
-    $message_log[] = "✅ ตรวจสอบและจัดตั้งฐานข้อมูล <strong>" . DB_NAME . "</strong> เรียบร้อยแล้ว";
-    $temp_pdo = null;
+    // พยายามเชื่อมต่อแบบระบุฐานข้อมูลโดยตรงก่อน (เนื่องจากเซิร์ฟเวอร์โรงเรียนส่วนใหญ่มักสร้างฐานข้อมูลมาให้เรียบร้อยแล้ว)
+    try {
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ]);
+        $message_log[] = "📡 เชื่อมต่อฐานข้อมูล <strong>" . DB_NAME . "</strong> บนเซิร์ฟเวอร์โรงเรียนสำเร็จ";
+    } catch (PDOException $db_err) {
+        // หากเชื่อมไม่สำเร็จเนื่องจากยังไม่มีฐานข้อมูล จึงจะทำการสร้างใหม่
+        $temp_dsn = "mysql:host=" . DB_HOST . ";charset=utf8mb4";
+        $temp_pdo = new PDO($temp_dsn, DB_USER, DB_PASS, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+        ]);
+        $temp_pdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+        $message_log[] = "✅ ตรวจสอบและจัดตั้งฐานข้อมูล <strong>" . DB_NAME . "</strong> เรียบร้อยแล้ว";
+        $temp_pdo = null;
 
-    // เชื่อมต่อสู่ฐานข้อมูลอย่างเป็นทางการ
-    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
-    $pdo = new PDO($dsn, DB_USER, DB_PASS, [
-        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        PDO::ATTR_EMULATE_PREPARES   => false,
-    ]);
+        // เชื่อมต่อสู่ฐานข้อมูลใหม่อีกครั้ง
+        $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+        $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ]);
+    }
 
     // โครงสร้างคำสั่งสร้างตารางหลัก
     $tables = [
