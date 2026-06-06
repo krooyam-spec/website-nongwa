@@ -256,9 +256,9 @@ foreach ($students_list as $std) {
         <div class="absolute inset-0 z-0">
             <img src="<?php echo htmlspecialchars($banner_bg); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-30 filter brightness-50" referrerPolicy="no-referrer">
         </div>
-        <div class="absolute inset-0 bg-gradient-to-r from-school-pink-dark/95 via-slate-950/85 to-transparent z-10"></div>
+        <div class="absolute inset-0 bg-gradient-to-l from-slate-950/95 via-slate-950/85 to-school-pink-dark/50 z-10"></div>
         
-        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12 w-full text-white">
+        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col-reverse lg:flex-row-reverse items-center justify-between gap-12 w-full text-white">
             <div class="space-y-6 max-w-2xl">
                 <span class="inline-block bg-white text-school-pink text-[10px] tracking-widest uppercase font-black px-4 py-1.5 rounded-full shadow-lg">
                     <?php echo htmlspecialchars($settings['banner_title'] ?? 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ'); ?>
@@ -284,10 +284,10 @@ foreach ($students_list as $std) {
                 </div>
             </div>
 
-            <!-- ภาพที่ตั้งตังไว้ด้านขวามือและปรับแก้ไขอัพโหลดไฟล์ได้ -->
-            <div class="hidden lg:block max-w-sm w-full relative z-20">
-                <div class="relative p-2 rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-300">
-                    <img id="banner_right_img" src="<?php echo htmlspecialchars($banner_right); ?>" alt="Banner Right Highlight" class="w-full h-64 object-cover rounded-2xl shadow-inner border border-white/10" referrerPolicy="no-referrer">
+            <!-- ภาพที่ตั้งตังไว้ด้านซ้ายมือและปรับแก้ไขอัพโหลดไฟล์ได้ -->
+            <div class="hidden lg:block max-w-sm w-full relative z-20 animate-fade-in">
+                <div class="relative p-2 rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-2xl -rotate-2 hover:rotate-0 transition-transform duration-300">
+                    <img id="banner_right_img" src="<?php echo htmlspecialchars($banner_right); ?>" alt="Banner Left Highlight" class="w-full h-64 object-cover rounded-2xl shadow-inner border border-white/10" referrerPolicy="no-referrer">
                     <div class="absolute -bottom-3 -right-3 bg-pink-500 font-bold text-[10px] uppercase text-white px-3 py-1 rounded-full shadow-lg">
                         อัตลักษณ์ ชมพู-ขาว
                     </div>
@@ -603,7 +603,7 @@ foreach ($students_list as $std) {
             <?php else: ?>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     <?php foreach ($external_links_list as $link): ?>
-                        <a href="<?php echo htmlspecialchars($link['url']); ?>" target="_blank" class="bg-white rounded-2xl p-5 border border-pink-50/50 shadow-sm hover:shadow-md hover:border-school-pink/20 transition-all flex gap-4 group">
+                        <a href="<?php echo htmlspecialchars($link['url_link'] ?? $link['url'] ?? '#'); ?>" target="_blank" class="bg-white rounded-2xl p-5 border border-pink-50/50 shadow-sm hover:shadow-md hover:border-school-pink/20 transition-all flex gap-4 group">
                             <div class="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-100 shadow-sm">
                                 <img src="<?php echo htmlspecialchars($link['image_url'] ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=200'); ?>" alt="<?php echo htmlspecialchars($link['title']); ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" referrerPolicy="no-referrer">
                             </div>

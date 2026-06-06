@@ -592,6 +592,8 @@ $settings = $settingsStmt->fetch();
             $active_tab = 'downloads';
         } elseif (isset($_GET['edit_teacher']) || (isset($_GET['action']) && strpos($_GET['action'], 'teacher') !== false) || isset($_POST['add_teacher']) || isset($_POST['edit_teacher_submit'])) {
             $active_tab = 'teachers';
+        } elseif (isset($_GET['edit_link']) || (isset($_GET['action']) && strpos($_GET['action'], 'link') !== false) || isset($_POST['add_link']) || isset($_POST['edit_link_submit'])) {
+            $active_tab = 'links';
         }
         ?>
         <div class="flex flex-wrap gap-1.5 border-b border-slate-200 pb-px">
@@ -599,7 +601,7 @@ $settings = $settingsStmt->fetch();
                 ⚙️ ตั้งค่าทั่วไป
             </a>
             <a href="admin.php?tab=students" class="px-4 py-3 rounded-t-2xl font-heading font-black text-xs sm:text-sm flex items-center gap-2 transition <?php echo $active_tab === 'students' ? 'bg-white text-school-pink border-t-2 border-school-pink border-x border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-850 bg-slate-100/40 hover:bg-slate-100'; ?>">
-                📊 ข้อมูลนักเรียน (สถิติ)
+                📊 ข้อมูลนักเรียน
             </a>
             <a href="admin.php?tab=news" class="px-4 py-3 rounded-t-2xl font-heading font-black text-xs sm:text-sm flex items-center gap-2 transition <?php echo $active_tab === 'news' ? 'bg-white text-school-pink border-t-2 border-school-pink border-x border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-850 bg-slate-100/40 hover:bg-slate-100'; ?>">
                 📰 ข่าวประชาสัมพันธ์
@@ -609,6 +611,9 @@ $settings = $settingsStmt->fetch();
             </a>
             <a href="admin.php?tab=teachers" class="px-4 py-3 rounded-t-2xl font-heading font-black text-xs sm:text-sm flex items-center gap-2 transition <?php echo $active_tab === 'teachers' ? 'bg-white text-school-pink border-t-2 border-school-pink border-x border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-850 bg-slate-100/40 hover:bg-slate-100'; ?>">
                 🧑‍🏫 ข้อมูลครูและทำเนียบ
+            </a>
+            <a href="admin.php?tab=links" class="px-4 py-3 rounded-t-2xl font-heading font-black text-xs sm:text-sm flex items-center gap-2 transition <?php echo $active_tab === 'links' ? 'bg-white text-school-pink border-t-2 border-school-pink border-x border-slate-200 shadow-sm' : 'text-slate-500 hover:text-slate-850 bg-slate-100/40 hover:bg-slate-100'; ?>">
+                🔗 สื่อและระบบงานครู
             </a>
         </div>
 
@@ -625,6 +630,8 @@ $settings = $settingsStmt->fetch();
                 require_once 'admin/downloads.php';
             } elseif ($active_tab === 'teachers') {
                 require_once 'admin/teachers.php';
+            } elseif ($active_tab === 'links') {
+                require_once 'admin/external_links.php';
             } else {
                 require_once 'admin/general.php';
             }
