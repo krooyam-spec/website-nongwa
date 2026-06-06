@@ -61,4 +61,33 @@ function thaiDate($dateStr) {
     $d = intval($parts[2]);
     return "{$d} " . ($months[$m] ?? '') . " " . substr($y, 2);
 }
+
+// 6. อัตโนมัติอัพเดตฟิลด์เพื่อรองรับการปรับแต่งแบนเนอร์และสารผู้บริหาร (Auto-Schema Alignment)
+try {
+    $healing_cols = [
+        'banner_title' => "ALTER TABLE `settings` ADD COLUMN `banner_title` varchar(255) DEFAULT 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ' AFTER `banner_right_image`",
+        'banner_subtitle' => "ALTER TABLE `settings` ADD COLUMN `banner_subtitle` text DEFAULT NULL AFTER `banner_title`",
+        'director_message_title' => "ALTER TABLE `settings` ADD COLUMN `director_message_title` varchar(255) DEFAULT 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี' AFTER `banner_subtitle`",
+        'director_message` WHERE 1=0;' => "", // placeholder for safety
+        'director_message' => "ALTER TABLE `settings` ADD COLUMN `director_message` text DEFAULT NULL AFTER `director_message_title`"
+    ];
+    foreach ($healing_cols as $col => $sql) {
+        if (empty($sql)) continue;
+        $check = $pdo->query("SHOW COLUMNS FROM `settings` LIKE '$col'")->fetchAll();
+        if (empty($check)) {
+            $pdo->exec($sql);
+            if ($col === 'banner_title') {
+                $pdo->exec("UPDATE `settings` SET `banner_title` = 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ' WHERE `id` = 1");
+            } else if ($col === 'banner_subtitle') {
+                $pdo->exec("UPDATE `settings` SET `banner_subtitle` = 'เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น:' WHERE `id` = 1");
+            } else if ($col === 'director_message_title') {
+                $pdo->exec("UPDATE `settings` SET `director_message_title` = 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี' WHERE `id` = 1");
+            } else if ($col === 'director_message') {
+                $pdo->exec("UPDATE `settings` SET `director_message` = '\"โรงเรียนบ้านหนองหว้า ขอตลับใจเป็นพันธมิตรร่วมกับชุมชน ผู้ปกครอง เพื่อขับเคลื่อนและสร้างสรรค์โอกาสทางวิชาการและวิชาชีพแก่นักเรียน สู่ความพร้อมในการปฏิสัมพันธ์และดำรงชีพในศตวรรษที่ 21 เรามุ่งเสกสร้างสภาพแวดล้อมที่สะอาด ปลอดภัย เพื่อเสริมองค์ความรู้อย่างบูรณาการสูงสุด\"' WHERE `id` = 1");
+            }
+        }
+    }
+} catch (Exception $e) {
+    // ล้มเหลวแบบเงียบ
+}
 ?>

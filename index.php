@@ -245,7 +245,7 @@ foreach ($students_list as $std) {
         <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12 w-full text-white">
             <div class="space-y-6 max-w-2xl">
                 <span class="inline-block bg-white text-school-pink text-[10px] tracking-widest uppercase font-black px-4 py-1.5 rounded-full shadow-lg">
-                    ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ
+                    <?php echo htmlspecialchars($settings['banner_title'] ?? 'ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ'); ?>
                 </span>
                 
                 <h2 class="text-3.5xl sm:text-5.5xl font-heading font-black leading-tight">
@@ -254,7 +254,7 @@ foreach ($students_list as $std) {
                 
                 <p class="text-base max-w-xl text-slate-200 font-light leading-relaxed">
                     "<?php echo htmlspecialchars($settings['school_motto']); ?>"<br>
-                    เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น: 
+                    <?php echo htmlspecialchars($settings['banner_subtitle'] ?? 'เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น:'); ?> 
                     <span class="text-white font-semibold underline decoration-pink-400"><?php echo htmlspecialchars($settings['levels']); ?></span>
                 </p>
 
@@ -342,9 +342,11 @@ foreach ($students_list as $std) {
                     <span class="w-2.5 h-6 bg-school-pink rounded-full"></span>
                     สารจากผู้บริหารโรงเรียนบ้านหนองหว้า
                 </div>
-                <h3 class="text-2xl font-heading font-black text-slate-900 leading-tight">มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี</h3>
-                <p class="text-sm font-light leading-relaxed text-slate-600">
-                    "โรงเรียนบ้านหนองหว้า ขอตลับใจเป็นพันธมิตรร่วมกับชุมชน ผู้ปกครอง เพื่อขับเคลื่อนและสร้างสรรค์โอกาสทางวิชาการและวิชาชีพแก่นักเรียน สู่ความพร้อมในการปฏิสัมพันธ์และดำรงชีพในศตวรรษที่ 21 เรามุ่งเสกสร้างสภาพแวดล้อมที่สะอาด ปลอดภัย เพื่อเสริมองค์ความรู้อย่างบูรณาการสูงสุด"
+                <h3 class="text-2xl font-heading font-black text-slate-900 leading-tight">
+                    <?php echo htmlspecialchars($settings['director_message_title'] ?? 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี'); ?>
+                </h3>
+                <p class="text-sm font-light leading-relaxed text-slate-600 whitespace-pre-line">
+                    <?php echo htmlspecialchars($settings['director_message'] ?? '"โรงเรียนบ้านหนองหว้า ขอตลับใจเป็นพันธมิตรร่วมกับชุมชน ผู้ปกครอง เพื่อขับเคลื่อนและสร้างสรรค์โอกาสทางวิชาการและวิชาชีพแก่นักเรียน สู่ความพร้อมในการปฏิสัมพันธ์และดำรงชีพในศตวรรษที่ 21 เรามุ่งเสกสร้างสภาพแวดล้อมที่สะอาด ปลอดภัย เพื่อเสริมองค์ความรู้อย่างบูรณาการสูงสุด"'); ?>
                 </p>
                 <!-- วิดีโอแนะนำโรงเรียนบ้านหนองหว้า (หากระบุ) -->
                 <?php if (!empty($settings['youtube_intro_url'])): ?>
