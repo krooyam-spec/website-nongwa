@@ -4,7 +4,7 @@
  * เมื่อผู้ใช้นอกทำการคลิกดาวน์โหลด ระบบจะบวกหนึ่งคราวสถิติเข้าสู่ MySQL แล้วส่งต่อไปยังที่อยู่ไฟล์จริง
  */
 
-require_once 'config.php';
+require_once 'db_connect.php';
 
 $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
 

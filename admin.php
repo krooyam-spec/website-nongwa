@@ -5,7 +5,7 @@
  * ออกแบบด้วยหัวใจ "ชมพู-ขาว" สวยงาม เป็นสัดส่วนและใช้ง่ายที่สุด
  */
 
-require_once 'config.php';
+require_once 'db_connect.php';
 
 // บังคับสิทธิแอดมินในการตรวจสอบ Session
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {

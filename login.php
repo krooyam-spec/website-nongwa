@@ -5,7 +5,7 @@
  * ออกแบบด้วยมโนทัศน์ธีม "ชมพู-ขาว" เรียบหรู สะอาดตา
  */
 
-require_once 'config.php';
+require_once 'db_connect.php';
 
 // หากมีการเข้าสู่ระบบอยู่แล้ว จะนำทางไปที่หน้าแอดมินโดยตรง
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
