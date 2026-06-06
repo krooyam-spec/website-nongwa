@@ -69,7 +69,8 @@ try {
         'banner_subtitle' => "ALTER TABLE `settings` ADD COLUMN `banner_subtitle` text DEFAULT NULL AFTER `banner_title`",
         'director_message_title' => "ALTER TABLE `settings` ADD COLUMN `director_message_title` varchar(255) DEFAULT 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี' AFTER `banner_subtitle`",
         'director_message` WHERE 1=0;' => "", // placeholder for safety
-        'director_message' => "ALTER TABLE `settings` ADD COLUMN `director_message` text DEFAULT NULL AFTER `director_message_title`"
+        'director_message' => "ALTER TABLE `settings` ADD COLUMN `director_message` text DEFAULT NULL AFTER `director_message_title`",
+        'current_academic_year' => "ALTER TABLE `settings` ADD COLUMN `current_academic_year` varchar(10) DEFAULT '2569' AFTER `school_theme_color`"
     ];
     foreach ($healing_cols as $col => $sql) {
         if (empty($sql)) continue;
@@ -84,7 +85,72 @@ try {
                 $pdo->exec("UPDATE `settings` SET `director_message_title` = 'มุ่งมั่นเสริมนวัตกรรมการเรียนการสอน เชิดชูคุณธรรมความดี' WHERE `id` = 1");
             } else if ($col === 'director_message') {
                 $pdo->exec("UPDATE `settings` SET `director_message` = '\"โรงเรียนบ้านหนองหว้า ขอตลับใจเป็นพันธมิตรร่วมกับชุมชน ผู้ปกครอง เพื่อขับเคลื่อนและสร้างสรรค์โอกาสทางวิชาการและวิชาชีพแก่นักเรียน สู่ความพร้อมในการปฏิสัมพันธ์และดำรงชีพในศตวรรษที่ 21 เรามุ่งเสกสร้างสภาพแวดล้อมที่สะอาด ปลอดภัย เพื่อเสริมองค์ความรู้อย่างบูรณาการสูงสุด\"' WHERE `id` = 1");
+            } else if ($col === 'current_academic_year') {
+                $pdo->exec("UPDATE `settings` SET `current_academic_year` = '2569' WHERE `id` = 1");
             }
+        }
+    }
+
+    // 7. จัดตั้งและเพิ่มตารางจัดเก็บสถิตินักเรียนแยกปีการศึกษา (Student Yearly Stats Table Alignment)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `student_yearly_stats` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `academic_year` varchar(10) NOT NULL,
+      `grade_name` varchar(50) NOT NULL,
+      `student_count` int(11) NOT NULL DEFAULT '0',
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `year_grade_unique` (`academic_year`, `grade_name`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    $check_yearly_empty = $pdo->query("SELECT id FROM `student_yearly_stats` LIMIT 1")->fetch();
+    if (!$check_yearly_empty) {
+        $initial_yearly_stats = [
+            // 2566
+            ['year' => '2566', 'grade' => 'อนุบาล 2', 'count' => 40],
+            ['year' => '2566', 'grade' => 'อนุบาล 3', 'count' => 42],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 50],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 48],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 50],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 52],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 51],
+            ['year' => '2566', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 53],
+            
+            // 2567
+            ['year' => '2567', 'grade' => 'อนุบาล 2', 'count' => 42],
+            ['year' => '2567', 'grade' => 'อนุบาล 3', 'count' => 44],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 52],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 50],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 52],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 55],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 54],
+            ['year' => '2567', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 56],
+
+            // 2568
+            ['year' => '2568', 'grade' => 'อนุบาล 2', 'count' => 44],
+            ['year' => '2568', 'grade' => 'อนุบาล 3', 'count' => 46],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 54],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 52],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 54],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 57],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 56],
+            ['year' => '2568', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 58],
+
+            // 2569
+            ['year' => '2569', 'grade' => 'อนุบาล 2', 'count' => 45],
+            ['year' => '2569', 'grade' => 'อนุบาล 3', 'count' => 48],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 1', 'count' => 56],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 2', 'count' => 52],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 3', 'count' => 54],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 4', 'count' => 59],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 5', 'count' => 58],
+            ['year' => '2569', 'grade' => 'ประถมศึกษาปีที่ 6', 'count' => 60],
+        ];
+        $stmt_ins = $pdo->prepare("INSERT INTO `student_yearly_stats` (`academic_year`, `grade_name`, `student_count`) VALUES (:year, :grade, :count)");
+        foreach ($initial_yearly_stats as $stat) {
+            $stmt_ins->execute([
+                'year' => $stat['year'],
+                'grade' => $stat['grade'],
+                'count' => $stat['count']
+            ]);
         }
     }
 } catch (Exception $e) {

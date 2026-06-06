@@ -77,18 +77,34 @@ try {
 }
 
 // 4. ดึงสถิตินักเรียนรายปี/รายห้อง และเอกสารดาวน์โหลด
+$active_current_year = $settings['current_academic_year'] ?? '2569';
+$student_stats = [];
+$yearly_comparison = [];
+
 try {
     $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->fetchAll();
     $students_list = $pdo->query("SELECT * FROM `students` ORDER BY `id` ASC")->fetchAll();
-    
-    // ดึงสถิตินักเรียนและสื่อภายนอกเพิ่มเติม
-    $student_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
     $external_links_list = $pdo->query("SELECT * FROM `external_links` ORDER BY `id` ASC")->fetchAll();
+    
+    // ดึงสถิตินักเรียนของปีการศึกษาปัจจุบันที่กำหนดในระบบ
+    $yearly_stmt = $pdo->prepare("SELECT * FROM `student_yearly_stats` WHERE `academic_year` = :year ORDER BY `id` ASC");
+    $yearly_stmt->execute(['year' => $active_current_year]);
+    $student_stats = $yearly_stmt->fetchAll();
+    
+    // หากไม่พบข้อมูลสถิติปีการศึกษาปัจจุบันล่าสุด ให้ทำการดึงจากตารางเดิม student_stats เป็นเซฟฟอลล์แบ็ค
+    if (empty($student_stats)) {
+        $student_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
+    }
+    
+    // ดึงสรุปยอดรวมประจำแต่ละปีการศึกษาเพื่อนำส่งทำแผนภูมิเปรียบเทียบนักเรียนรายปีการศึกษา
+    $yearly_comp_stmt = $pdo->query("SELECT `academic_year`, SUM(`student_count`) as total_count FROM `student_yearly_stats` GROUP BY `academic_year` ORDER BY `academic_year` ASC");
+    $yearly_comparison = $yearly_comp_stmt->fetchAll();
 } catch (Exception $e) {
     $downloads_list = [];
     $students_list = [];
     $student_stats = [];
     $external_links_list = [];
+    $yearly_comparison = [];
 }
 
 // หากตารางไม่มีข้อมูลหรือเกิดข้อผิดพลาด ให้กำหนดค่าเริ่มต้น
@@ -463,64 +479,112 @@ foreach ($students_list as $std) {
             </div>
         </section>
 
-        <!-- 5.4 ข้อมูลสถิตินักเรียนรายคลาสสิก (Interactive Student Demographics Chart) -->
+        <!-- 5.4 ข้อมูลสถิตินักเรียน (Interactive Student Demographics & Yearly Comparison) -->
         <section id="stats" class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch scroll-mt-24">
-            <!-- ซ้าย: การจำแนกเพศของนักเรียน -->
-            <div class="md:col-span-4 bg-white rounded-3xl p-6 shadow-sm border border-pink-50 space-y-6 flex flex-col justify-between">
+            
+            <!-- 1. การจำแนกเพศของนักเรียน (lg:col-span-3) -->
+            <div class="md:col-span-6 lg:col-span-3 bg-white rounded-3xl p-6 shadow-sm border border-pink-50 space-y-6 flex flex-col justify-between">
                 <div>
-                    <h3 class="text-xl font-heading font-black text-slate-900 leading-tight">สัดส่วนประชากรตามเพศ</h3>
-                    <p class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">สมดุลเพศทางสังคมของนักเรียนในสถานศึกษาจริง</p>
+                    <h3 class="text-lg font-heading font-black text-slate-900 leading-tight">สัดส่วนประชากรตามเพศ</h3>
+                    <p class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">สมดุลเพศของนักเรียนปีการศึกษาปัจจุบัน (<?php echo htmlspecialchars($active_current_year); ?>)</p>
                 </div>
                 
-                <div class="flex gap-4 justify-between items-center py-6">
-                    <div class="text-center flex-1 py-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
-                        <span class="text-blue-500 font-black text-3xl">ชาย</span>
-                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo htmlspecialchars($boy_count_computed); ?> คน</div>
-                        <span class="text-[10px] text-slate-400 font-bold">ประมาณ 49%</span>
+                <div class="flex gap-4 justify-between items-center py-4">
+                    <div class="text-center flex-1 py-4 bg-blue-50/40 rounded-2xl border border-blue-100/30">
+                        <span class="text-blue-500 font-extrabold text-2xl font-heading">ชาย</span>
+                        <div class="text-base font-black text-slate-800 mt-1"><?php echo htmlspecialchars($boy_count_computed); ?> คน</div>
+                        <span class="text-[9px] text-slate-400 font-bold">ประมาณ 49%</span>
                     </div>
-                    <div class="text-center flex-1 py-4 bg-pink-50/50 rounded-2xl border border-pink-100/50">
-                        <span class="text-school-pink font-black text-3xl">หญิง</span>
-                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo htmlspecialchars($girl_count_computed); ?> คน</div>
-                        <span class="text-[10px] text-slate-400 font-bold">ประมาณ 51%</span>
+                    <div class="text-center flex-1 py-4 bg-pink-50/40 rounded-2xl border border-pink-100/30">
+                        <span class="text-school-pink font-extrabold text-2xl font-heading">หญิง</span>
+                        <div class="text-base font-black text-slate-800 mt-1"><?php echo htmlspecialchars($girl_count_computed); ?> คน</div>
+                        <span class="text-[9px] text-slate-400 font-bold">ประมาณ 51%</span>
                     </div>
                 </div>
 
-                <div class="space-y-2">
-                    <div class="flex justify-between text-xs font-bold text-slate-600">
-                        <span>สัดส่วนเฉลี่ยรวม (ชาย : หญิง 1:1)</span>
-                        <span>สำเร็จความก้าวหน้า 100%</span>
+                <div class="space-y-2 mt-auto">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-500">
+                        <span>ชาย : หญิง (1:1 โดยประมาณ)</span>
+                        <span>สัดส่วนสัมพันธ์</span>
                     </div>
-                    <div class="w-full bg-blue-100 rounded-full h-3 overflow-hidden flex">
+                    <div class="w-full bg-blue-100 rounded-full h-2 overflow-hidden flex">
                         <div class="bg-blue-500 h-full" style="width: 49%"></div>
                         <div class="bg-school-pink h-full" style="width: 51%"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- ขวา: รายละเอียดระดับชั้นและการกระจายตัวของประชากร -->
-            <div class="md:col-span-8 bg-white rounded-3xl p-6 shadow-sm border border-pink-50 space-y-6">
+            <!-- 2. รายละเอียดระดับชั้นและการกระจายตัวของประชากรประจำปีปัจจุบัน (lg:col-span-5) -->
+            <div class="md:col-span-6 lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-pink-50 space-y-5 flex flex-col justify-between">
                 <div>
-                    <h3 class="text-xl font-heading font-black text-slate-900 leading-tight">สถิตินักเรียนรายระดับชั้นเรียน</h3>
-                    <p class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">สรุปจำนวนนักเรียนทุกระดับชั้นนับรวมถึงสิ้นปีการศึกษา</p>
+                    <h3 class="text-base sm:text-lg font-heading font-black text-slate-900 leading-tight">สถิตินักเรียนรายระดับชั้นเรียน</h3>
+                    <p class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mt-1">ประจำปีการศึกษา <?php echo htmlspecialchars($active_current_year); ?> (รวม <?php echo number_format($total_students_count); ?> คน)</p>
                 </div>
 
-                <!-- ออกแบบแบบแท่งความหนาแน่นเชิงกราฟิก -->
-                <div class="space-y-4 pt-2">
+                <div class="space-y-3.5 pt-1">
                     <?php
                     foreach ($student_stats as $st):
                         $st_count = intval($st['student_count']);
-                        $percent = $total_students_count > 0 ? round(($st_count / $total_students_count) * 100) : 0;
+                        $percent = $total_students_count > 0 ? round(($st_count / $total_students_count) * 100, 1) : 0;
                     ?>
                         <div class="space-y-1">
-                            <div class="flex justify-between text-xs font-bold">
-                                <span class="text-slate-800"><?php echo htmlspecialchars($st['grade_name']); ?></span>
-                                <span class="text-school-pink font-extrabold"><?php echo htmlspecialchars($st_count); ?> คน</span>
+                            <div class="flex justify-between text-[11px] font-bold">
+                                <span class="text-slate-700"><?php echo htmlspecialchars($st['grade_name']); ?></span>
+                                <span class="text-school-pink font-extrabold"><?php echo htmlspecialchars($st_count); ?> คน (<?php echo $percent; ?>%)</span>
                             </div>
-                            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-r from-pink-300 to-school-pink h-full rounded-full" style="width: <?php echo $percent; ?>%;"></div>
+                            <div class="w-full h-2 bg-slate-100/85 rounded-full overflow-hidden border border-slate-100/20">
+                                <div class="bg-gradient-to-r from-pink-300 to-school-pink h-full rounded-full transition-all duration-300" style="width: <?php echo $percent; ?>%;"></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- 3. แผนภูมิเปรียบเทียบจำนวนนักเรียนรายปีการศึกษา (lg:col-span-4) -->
+            <div class="md:col-span-12 lg:col-span-4 bg-gradient-to-br from-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-md border border-indigo-900/30 flex flex-col justify-between space-y-6 animate-fadeIn">
+                <div>
+                    <h3 class="text-base sm:text-lg font-heading font-black text-pink-300 leading-tight flex items-center gap-1.5">
+                        📈 เปรียบเทียบประชากรนักเรียนรายปี
+                    </h3>
+                    <p class="text-[10px] text-indigo-200 font-semibold uppercase tracking-wider mt-1">อัตราการเปลี่ยนแปลงจำนวนนักเรียนรวมในแต่ละปีการศึกษา</p>
+                </div>
+
+                <div class="flex items-end justify-around gap-2 px-1 py-1 min-h-[180px] w-full">
+                    <?php
+                    if (!empty($yearly_comparison)):
+                        $max_total = 1;
+                        foreach ($yearly_comparison as $comp) {
+                            if (intval($comp['total_count']) > $max_total) {
+                                $max_total = intval($comp['total_count']);
+                            }
+                        }
+                        foreach ($yearly_comparison as $comp):
+                            $h_pct = round((intval($comp['total_count']) / $max_total) * 100);
+                            $is_current = ($comp['academic_year'] === $active_current_year);
+                    ?>
+                        <div class="flex flex-col items-center gap-2 group cursor-pointer flex-1 animate-fadeIn">
+                            <div class="text-[10px] font-black <?php echo $is_current ? 'text-pink-400 scale-105' : 'text-slate-300'; ?> group-hover:scale-110 transition duration-150">
+                                <?php echo number_format($comp['total_count']); ?> คน
+                            </div>
+                            <div class="w-10 sm:w-12 bg-indigo-900/50 rounded-t-xl overflow-hidden relative border border-indigo-805/10 min-h-[15px] max-h-[170px]" style="height: <?php echo max(15, $h_pct * 1.3); ?>px">
+                                <div class="absolute bottom-0 left-0 w-full rounded-t-xl transition-all duration-500 <?php echo $is_current ? 'bg-gradient-to-t from-school-pink to-pink-400 shadow-lg shadow-pink-500/20' : 'bg-slate-500/85 group-hover:bg-slate-400'; ?>" style="height: 100%"></div>
+                            </div>
+                            <div class="text-[9px] font-black uppercase text-center mt-1 <?php echo $is_current ? 'text-pink-300 font-bold' : 'text-indigo-200'; ?>">
+                                ปี <?php echo htmlspecialchars($comp['academic_year']); ?>
+                            </div>
+                        </div>
+                    <?php 
+                        endforeach;
+                    else:
+                    ?>
+                        <div class="text-xs text-indigo-200 text-center py-10 w-full font-bold">
+                            ไม่มีข้อมูลเปรียบเทียบในขณะนี้
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="bg-indigo-900/40 border border-indigo-800/30 rounded-2xl p-3 text-center text-[10px] text-indigo-100 flex items-center justify-center gap-1.5 font-bold leading-normal">
+                    <span>💡</span> พัฒนาการของโรงเรียนเป็นไปด้วยความมั่นคงและก้าวหน้าต่อเนื่อง
                 </div>
             </div>
         </section>
