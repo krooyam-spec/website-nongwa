@@ -24,6 +24,41 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 $success_alert = '';
 $err_alert = '';
 
+/**
+ * ฟังก์ชันสำหรับช่วยเหลืออัปโหลดไฟล์จริงขึ้นสู่เซิร์ฟเวอร์โรงเรียน
+ * @param array $file $_FILES['input_name']
+ * @param string $allowed_types นามสกุลที่ต้องการ เช่น "jpg,png,pdf,docx"
+ * @param string $target_dir ไดเรกทอรีจัดเก็บ
+ * @return string|false เส้นทางจัดเก็บไฟล์ที่อัพโหลดสำเร็จ (เช่น uploads/xxxx.pdf) หรือ false ในกรณีที่ล้มเหลว
+ */
+function uploadFileToServer($file, $allowed_types = 'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip', $target_dir = 'uploads/') {
+    if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
+        return false;
+    }
+
+    // สร้างไดเรกทอรีถ้ายังไม่มี
+    if (!file_exists($target_dir)) {
+        mkdir($target_dir, 0755, true);
+    }
+
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $allowed = explode(',', $allowed_types);
+
+    if (!in_array($ext, $allowed)) {
+        return false;
+    }
+
+    // ความปลอดภัย: เปลี่ยนชื่อไฟล์ด้วยเครื่องหมายเวลาและสุ่มตัวเลข เพื่อไม่ให้เกิดการทับซ้อนและเวิร์กโฟลว์ผิดพลาด
+    $new_filename = 'file_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+    $target_filepath = $target_dir . $new_filename;
+
+    if (move_uploaded_file($file['tmp_name'], $target_filepath)) {
+        return $target_filepath;
+    }
+
+    return false;
+}
+
 // จัดการเหตุการณ์เมื่อต้องการอัปเดตข้อมูลทั่วไปของโรงเรียน (Update School Settings)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
     $school_name = cleanInput($_POST['school_name'] ?? '');
@@ -40,6 +75,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
     $youtube_intro_url = cleanInput($_POST['youtube_intro_url'] ?? '');
 
     try {
+        // อัปโหลดไฟล์รูปภาพหรือไฟล์เอกสารโลโก้และแบนเนอร์
+        $existing_stmt = $pdo->query("SELECT school_logo, banner_bg_image, banner_right_image FROM `settings` WHERE `id` = 1");
+        $existing_sets = $existing_stmt->fetch();
+        
+        $school_logo = $existing_sets['school_logo'] ?? '';
+        $banner_bg_image = $existing_sets['banner_bg_image'] ?? '';
+        $banner_right_image = $existing_sets['banner_right_image'] ?? '';
+        
+        // อัปโหลดโลโก้โรงเรียน (รูปภาพ)
+        if (isset($_FILES['school_logo_file']) && $_FILES['school_logo_file']['error'] === UPLOAD_ERR_OK) {
+            $uploaded_logo = uploadFileToServer($_FILES['school_logo_file'], 'jpg,jpeg,png,gif');
+            if ($uploaded_logo) {
+                $school_logo = $uploaded_logo;
+            }
+        } else if (!empty($_POST['school_logo_url'])) {
+            $school_logo = cleanInput($_POST['school_logo_url']);
+        }
+        
+        // อัปโหลดภาพพื้นหลังแบนเนอร์ (รูปภาพพื้นหลังเด่น)
+        if (isset($_FILES['banner_bg_file']) && $_FILES['banner_bg_file']['error'] === UPLOAD_ERR_OK) {
+            $uploaded_bg = uploadFileToServer($_FILES['banner_bg_file'], 'jpg,jpeg,png,gif');
+            if ($uploaded_bg) {
+                $banner_bg_image = $uploaded_bg;
+            }
+        } else if (!empty($_POST['banner_bg_url'])) {
+            $banner_bg_image = cleanInput($_POST['banner_bg_url']);
+        }
+        
+        // อัปโหลดภาพขวาบนแบนเนอร์หลัก
+        if (isset($_FILES['banner_right_file']) && $_FILES['banner_right_file']['error'] === UPLOAD_ERR_OK) {
+            $uploaded_right = uploadFileToServer($_FILES['banner_right_file'], 'jpg,jpeg,png,gif');
+            if ($uploaded_right) {
+                $banner_right_image = $uploaded_right;
+            }
+        } else if (!empty($_POST['banner_right_url'])) {
+            $banner_right_image = cleanInput($_POST['banner_right_url']);
+        }
+
         $stmt = $pdo->prepare("UPDATE `settings` SET 
             `school_name` = :school_name,
             `short_name` = :short_name,
@@ -52,7 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
             `director_name` = :director_name,
             `director_title` = :director_title,
             `director_image` = :director_image,
-            `youtube_intro_url` = :youtube_intro_url
+            `youtube_intro_url` = :youtube_intro_url,
+            `school_logo` = :school_logo,
+            `banner_bg_image` = :banner_bg_image,
+            `banner_right_image` = :banner_right_image
             WHERE `id` = 1");
         
         $stmt->execute([
@@ -67,10 +143,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_settings'])) {
             'director_name' => $director_name,
             'director_title' => $director_title,
             'director_image' => $director_image,
-            'youtube_intro_url' => $youtube_intro_url
+            'youtube_intro_url' => $youtube_intro_url,
+            'school_logo' => $school_logo,
+            'banner_bg_image' => $banner_bg_image,
+            'banner_right_image' => $banner_right_image
         ]);
 
-        $success_alert = 'อัปเดตการตั้งค่าข้อมูลทั่วไปของโรงเรียนบ้านหนองหว้าเรียบร้อยแล้ว!';
+        // จัดการอัปเดตสถิติจนวนนักเรียนรายชั้นเรียน (จากเมนูย่อยของหน้าแก้ไข)
+        if (isset($_POST['student_counts']) && is_array($_POST['student_counts'])) {
+            foreach ($_POST['student_counts'] as $grade_id => $count) {
+                $update_stat_stmt = $pdo->prepare("UPDATE `student_stats` SET `student_count` = :count WHERE `id` = :id");
+                $update_stat_stmt->execute([
+                    'count' => intval($count),
+                    'id' => intval($grade_id)
+                ]);
+            }
+        }
+
+        $success_alert = 'อัปเดตการตั้งค่าข้อมูลทั่วไปของโรงเรียนบ้านหนองหว้าและสถิตินักเรียนเรียบร้อยแล้ว!';
     } catch (Exception $e) {
         $err_alert = 'เกิดข้อผิดพลาดในการบันทึกข้อมูลตาราง: ' . $e->getMessage();
     }
@@ -85,6 +175,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_news'])) {
     $image_url = cleanInput($_POST['news_image'] ?? '');
     $sticky_flag = isset($_POST['news_sticky']) ? 1 : 0;
     $date = date('Y-m-d');
+
+    // รองรับอัปเดตไฟล์ภาพกิจกรรมจริงขึ้นเซิร์ฟเวอร์
+    if (isset($_FILES['news_image_file']) && $_FILES['news_image_file']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_image = uploadFileToServer($_FILES['news_image_file'], 'jpg,jpeg,png,gif');
+        if ($uploaded_image) {
+            $image_url = $uploaded_image;
+        }
+    }
 
     if (empty($image_url)) {
         $image_url = 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&q=80&w=600';
@@ -120,6 +218,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_doc'])) {
     $file_url = cleanInput($_POST['doc_url'] ?? '#');
     $date = date('Y-m-d');
 
+    // รองรับการบันทึกอัปโหลดไฟล์จริงขึ้นจัดเก็บอย่างแท้จริง
+    if (isset($_FILES['doc_file']) && $_FILES['doc_file']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_doc_path = uploadFileToServer($_FILES['doc_file'], 'pdf,doc,docx,xls,xlsx,zip,jpg,png,jpeg');
+        if ($uploaded_doc_path) {
+            $file_url = $uploaded_doc_path;
+            
+            // ตรวจจับนามสกุลเพื่อกำหนดประเภทไฟล์โดยอัตโนมัติ
+            $ext = strtolower(pathinfo($_FILES['doc_file']['name'], PATHINFO_EXTENSION));
+            if ($ext === 'docx' || $ext === 'doc') {
+                $file_type = 'WORD';
+            } elseif ($ext === 'xlsx' || $ext === 'xls') {
+                $file_type = 'EXCEL';
+            } else {
+                $file_type = strtoupper($ext);
+            }
+            
+            // ตรวจจับขนาดไฟล์โดยอัตโนมัติ
+            $bytes = $_FILES['doc_file']['size'];
+            if ($bytes >= 1048576) {
+                $file_size = round($bytes / 1048576, 1) . ' MB';
+            } else {
+                $file_size = round($bytes / 1024, 1) . ' KB';
+            }
+        }
+    }
+
     if (empty($title)) {
         $err_alert = 'กรุณากรอกชื่อสาส์นสิทธิ์เอกสารดาวน์โหลดเพื่อสร้างลิงก์เข้าสู่คลังจัดจ้าง';
     } else {
@@ -148,6 +272,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_teacher'])) {
     $subject_group = cleanInput($_POST['teacher_group'] ?? 'งานสอนทั่วไป');
     $image_url = cleanInput($_POST['teacher_image'] ?? '');
     $sort_order = intval($_POST['teacher_order'] ?? 99);
+    $pa_link_url = cleanInput($_POST['teacher_pa_url'] ?? '');
+    $portfolio_url = cleanInput($_POST['teacher_portfolio_url'] ?? '');
+
+    // อัปโหลดไฟล์รูปประจำตนเอง (Teacher Profile Photo)
+    if (isset($_FILES['teacher_image_file']) && $_FILES['teacher_image_file']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_img = uploadFileToServer($_FILES['teacher_image_file'], 'jpg,jpeg,png,gif');
+        if ($uploaded_img) {
+            $image_url = $uploaded_img;
+        }
+    }
+
+    // อัปโหลดรายงานผลการปฏิบัติงาน (PA PDF/Doc file)
+    if (isset($_FILES['teacher_pa_file']) && $_FILES['teacher_pa_file']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_pa = uploadFileToServer($_FILES['teacher_pa_file'], 'pdf,doc,docx,zip');
+        if ($uploaded_pa) {
+            $pa_link_url = $uploaded_pa;
+        }
+    }
+
+    // อัปโหลดบันทึกพอร์ตหรือรายงานสมบัติ (Portfolio file)
+    if (isset($_FILES['teacher_portfolio_file']) && $_FILES['teacher_portfolio_file']['error'] === UPLOAD_ERR_OK) {
+        $uploaded_port = uploadFileToServer($_FILES['teacher_portfolio_file'], 'pdf,doc,docx,zip,jpg,png,jpeg');
+        if ($uploaded_port) {
+            $portfolio_url = $uploaded_port;
+        }
+    }
 
     if (empty($image_url)) {
         $image_url = 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=300';
@@ -157,16 +307,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_teacher'])) {
         $err_alert = 'กรุณาระบุชื่อและตำแหน่งข้าราชการครูท่านนั้นๆ ให้รอบคอบ';
     } else {
         try {
-            $stmt = $pdo->prepare("INSERT INTO `teachers` (`name`, `position`, `level`, `subject_group`, `image_url`, `sort_order`) VALUES (:name, :pos, :level, :group, :img, :sort)");
+            $stmt = $pdo->prepare("INSERT INTO `teachers` (`name`, `position`, `level`, `subject_group`, `image_url`, `pa_link_url`, `portfolio_url`, `sort_order`) VALUES (:name, :pos, :level, :group, :img, :pa, :portfolio, :sort)");
             $stmt->execute([
                 'name' => $name,
                 'pos' => $position,
                 'level' => $level,
                 'group' => $subject_group,
                 'img' => $image_url,
+                'pa' => $pa_link_url,
+                'portfolio' => $portfolio_url,
                 'sort' => $sort_order
             ]);
-            $success_alert = 'เพิ่มประวัติครูท่านใหม่เข้าเป็นประชากรข้าราชการรั้วชมพูขาวในตารางเรียบร้อย!';
+            $success_alert = 'เพิ่มประวัติครูท่านใหม่และบันทึกข้อตกลง PA และลิงก์ทางวิชาการเรียบร้อย!';
         } catch (Exception $e) {
             $err_alert = 'ไม่สามารถลงทะเบียนประวัติข้าราชการครู: ' . $e->getMessage();
         }
@@ -288,7 +440,7 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                         <p class="text-[10px] text-slate-400 font-semibold uppercase mt-2">แก้ไขข้อมูลและจัดเก็บลงในตาราง settings ประมวลผลสดแบบเรียลไทม์</p>
                     </div>
 
-                    <form action="admin.php" method="POST" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
+                    <form action="admin.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
                         <input type="hidden" name="update_settings" value="done">
 
                         <div class="space-y-1">
@@ -351,9 +503,62 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                             <input type="text" name="youtube_intro_url" value="<?php echo htmlspecialchars($settings['youtube_intro_url'] ?? ''); ?>" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
                         </div>
 
+                        <!-- 🌐 โซนตั้งค่าสื่อกราฟิก โลโก้ และแบนเนอร์โรงเรียน -->
+                        <div class="sm:col-span-2 border-t border-slate-100 pt-6 mt-4 space-y-4">
+                            <h4 class="font-heading font-black text-sm text-slate-800 flex items-center gap-1.5">
+                                <span class="p-1 px-2.5 bg-pink-100 text-school-pink rounded-lg text-xs">🎨</span>
+                                อัพโหลดโลโก้โรงเรียนและภาพแบนเนอร์
+                            </h4>
+                            <p class="text-[10px] text-slate-400 font-semibold leading-relaxed">สามารถคลิกเลือกเพื่ออัพโหลดไฟล์ภาพจากระบบคอมพิวเตอร์ของคุณขึ้นเก็บบน Server โรงเรียนได้ทันที หรือป้อนค่าเป็นที่อยู่ลิงก์เว็บตรงทั่วไป (URL)</p>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                                <!-- อัพโหลดโลโก้ -->
+                                <div class="bg-white p-3 rounded-xl border border-slate-200/50 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-700">1. โลโก้สถานศึกษา</label>
+                                    <input type="file" name="school_logo_file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 file:text-school-pink hover:file:bg-pink-100">
+                                    <input type="text" name="school_logo_url" value="<?php echo htmlspecialchars($settings['school_logo'] ?? ''); ?>" placeholder="หรือวางลิงก์ URL..." class="w-full rounded-lg border border-slate-200 p-1.5 text-[10px] font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                                </div>
+
+                                <!-- อัพโหลดภาพพื้นหลังแบนเนอร์ -->
+                                <div class="bg-white p-3 rounded-xl border border-slate-200/50 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-700">2. พื้นหลังแบนเนอร์ใหญ่</label>
+                                    <input type="file" name="banner_bg_file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 file:text-school-pink hover:file:bg-pink-100">
+                                    <input type="text" name="banner_bg_url" value="<?php echo htmlspecialchars($settings['banner_bg_image'] ?? ''); ?>" placeholder="หรือวางลิงก์ URL..." class="w-full rounded-lg border border-slate-200 p-1.5 text-[10px] font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                                </div>
+
+                                <!-- อัพโหลดรูปขวาประจำแบนเนอร์ -->
+                                <div class="bg-white p-3 rounded-xl border border-slate-200/50 space-y-2">
+                                    <label class="block text-[11px] font-bold text-slate-700">3. ภาพขวามือแบนเนอร์</label>
+                                    <input type="file" name="banner_right_file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 file:text-school-pink hover:file:bg-pink-100">
+                                    <input type="text" name="banner_right_url" value="<?php echo htmlspecialchars($settings['banner_right_image'] ?? ''); ?>" placeholder="หรือวางลิงก์ URL..." class="w-full rounded-lg border border-slate-200 p-1.5 text-[10px] font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 📊 ส่วนตั้งค่าจำนวนนักเรียนรายระดับชั้น -->
+                        <div class="sm:col-span-2 border-t border-slate-100 pt-6 mt-2 space-y-3">
+                            <h4 class="font-heading font-black text-sm text-slate-800 flex items-center gap-1.5">
+                                <span class="p-1 px-2.5 bg-pink-100 text-school-pink rounded-lg text-xs">📊</span>
+                                ปรับปรุงยอดสถิติจำนวนนักเรียนรายชั้นเรียน
+                            </h4>
+                            <p class="text-[10px] text-slate-400 font-semibold leading-relaxed">ป้อนตัวเลขสถิติของแต่ละระดับชั้นเรียน ระบบหน้าแรกจะนำยอดรวมไปคำนวณและแจกแจงแผนภูมิชาย-หญิงเพื่อให้แสดงเกณฑ์สัมพันธ์ถูกจริง</p>
+                            
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <?php 
+                                $loaded_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
+                                foreach ($loaded_stats as $st): 
+                                ?>
+                                    <div class="space-y-1 bg-white p-2 text-center rounded-xl border border-slate-200">
+                                        <label class="block text-[10px] text-slate-500 font-bold leading-tight"><?php echo htmlspecialchars($st['grade_name']); ?></label>
+                                        <input type="number" name="student_counts[<?php echo $st['id']; ?>]" value="<?php echo intval($st['student_count']); ?>" class="w-20 mx-auto text-center rounded-lg border border-slate-200 p-1 text-xs font-bold focus:ring-1 focus:ring-school-pink text-slate-800 outline-none">
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
                         <div class="pt-4 sm:col-span-2">
                             <button type="submit" class="w-full bg-slate-900 hover:bg-slate-950 text-white font-black py-3 rounded-xl transition shadow">
-                                บันทึกอัปเดตข้อมูลโครงสร้างสถาบัน
+                                บันทึกอัปเดตข้อมูลโครงสร้างสถาบันและจำนวนนักเรียน
                             </button>
                         </div>
                     </form>
@@ -371,7 +576,7 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                         <p class="text-[10px] text-slate-400 font-semibold uppercase mt-2">เพิ่มข้อมูลใหม่เข้าสู่ตาราง news เชื่อมสัมพันธ์ชุมชน</p>
                     </div>
 
-                    <form action="admin.php" method="POST" class="space-y-4 text-xs font-semibold text-slate-600">
+                    <form action="admin.php" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs font-semibold text-slate-600">
                         <input type="hidden" name="add_news" value="done">
 
                         <div class="space-y-1">
@@ -390,9 +595,11 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                                 </select>
                             </div>
 
-                            <div class="space-y-1">
-                                <label class="block">รูปภาพหน้าปกข่าว (ลิงค์ URL หรือปล่อยว่างเป็นค่าตั้งต้น)</label>
-                                <input type="text" name="news_image" placeholder="https://images.unsplash.com/..." class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                            <div class="space-y-1 gap-2 border-b border-pink-100/10 pb-2">
+                                <label class="block text-slate-800 font-bold">รูปหน้าปกข่าวสาร</label>
+                                <p class="text-[9px] text-slate-400 mt-0.5">เลือกไฟล์ถาพ หรือวางที่อยู่ลิงก์เว็บรูปภาพด้านล่าง</p>
+                                <input type="file" name="news_image_file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 file:text-school-pink hover:file:bg-pink-100 mb-1.5">
+                                <input type="text" name="news_image" placeholder="หรือพิมพ์ / วางที่อยู่ลิงก์รูปตรง..." class="w-full rounded-xl border border-pink-100 p-2 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
                             </div>
                         </div>
 
@@ -463,7 +670,7 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                         เพิ่มเอกสารคลังข่าวจัดซื้อจัดจ้าง
                     </h4>
                     
-                    <form action="admin.php" method="POST" class="space-y-4 text-xs font-semibold text-slate-600">
+                    <form action="admin.php" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs font-semibold text-slate-600">
                         <input type="hidden" name="add_doc" value="done">
 
                         <div class="space-y-1">
@@ -481,24 +688,33 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                             </select>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="space-y-1">
-                                <label class="block">ประเภทไฟล์</label>
-                                <select name="doc_type" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-bold bg-white focus:ring-1 focus:ring-school-pink outline-none">
-                                    <option value="PDF">PDF</option>
-                                    <option value="WORD">WORD</option>
-                                    <option value="EXCEL">EXCEL</option>
-                                </select>
-                            </div>
-                            <div class="space-y-1">
-                                <label class="block">ขนาดพื้นที่ (เช่น 1.2 MB)</label>
-                                <input type="text" name="doc_size" value="1.2 MB" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
-                            </div>
+                        <div class="space-y-2 border-t border-pink-100/35 pt-2">
+                            <label class="block text-slate-800 font-bold">1. อัพโหลดเอกสารจริงเข้าเซิร์ฟเวอร์</label>
+                            <p class="text-[9px] text-slate-400 mt-0.5">เลือกเพื่อจำนำไฟล์ขึ้นเซิร์ฟเวอร์โดยตรง (ระบบจะตรวจจับนามสกุลและขนาดไฟล์โดยอัตโนมัติ)</p>
+                            <input type="file" name="doc_file" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 file:text-school-pink hover:file:bg-pink-100">
                         </div>
 
-                        <div class="space-y-1">
-                            <label class="block">ลิงค์ที่อยู่ดาวน์โหลด (URL หรือปล่อยเป็น # ไว้)</label>
-                            <input type="text" name="doc_url" value="#" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                        <div class="border-t border-pink-100/35 pt-2 space-y-2">
+                            <label class="block text-slate-500">หรือวางลิงก์ระบุค่าแบบกำหนดเองด้านล่าง:</label>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="space-y-1">
+                                    <label class="block">ประเภทไฟล์แยก</label>
+                                    <select name="doc_type" class="w-full rounded-xl border border-pink-100 p-1.5 text-xs font-bold bg-white focus:ring-1 focus:ring-school-pink outline-none">
+                                        <option value="PDF">PDF</option>
+                                        <option value="WORD">WORD</option>
+                                        <option value="EXCEL">EXCEL</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block">ขนาดพื้นที่ (เช่น 1.2 MB)</label>
+                                    <input type="text" name="doc_size" value="1.2 MB" class="w-full rounded-xl border border-pink-100 p-1.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="block">ลิงค์ที่อยู่ดาวน์โหลด (URL หรือปล่อยเป็น # ไว้)</label>
+                                <input type="text" name="doc_url" value="#" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                            </div>
                         </div>
 
                         <button type="submit" class="w-full bg-slate-900 hover:bg-slate-950 text-white font-black py-2.5 rounded-xl transition shadow text-xs">
@@ -514,7 +730,7 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                         ลงทะเบียนผู้บริหารและครูเพิ่ม
                     </h4>
 
-                    <form action="admin.php" method="POST" class="space-y-4 text-xs font-semibold text-slate-600">
+                    <form action="admin.php" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs font-semibold text-slate-600">
                         <input type="hidden" name="add_teacher" value="done">
 
                         <div class="space-y-1">
@@ -523,15 +739,17 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                         </div>
 
                         <div class="space-y-1">
-                            <label class="block">ตำแหน่ง (เช่น ครูวิชาการ / ครูระดับชั้น...)</label>
-                            <input type="text" name="teacher_position" required placeholder="เช่น ครูวิชาการวิทยาศาสตร์..." class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                            <label class="block">ตำแหน่ง (เช่น ครูวิชาการ / ครูประจำชั้นชั้น...)</label>
+                            <input type="text" name="teacher_position" required placeholder="เช่น ครูประจำชั้น ป.6 / ครูผู้ช่วย..." class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
                         </div>
 
                         <div class="space-y-1">
                             <label class="block">วิทยฐานะ</label>
                             <select name="teacher_level" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-bold bg-white focus:ring-1 focus:ring-school-pink outline-none">
+                                <option value="ผู้อำนวยการโรงเรียน (คศ.3)">ผู้อำนวยการโรงเรียน (คศ.3)</option>
                                 <option value="ครูชำนาญการพิเศษ (คศ.3)">ครูชำนาญการพิเศษ (คศ.3)</option>
                                 <option value="ครูชำนาญการ (คศ.2)">ครูชำนาญการ (คศ.2)</option>
+                                <option value="ครู คศ.1">ครู คศ.1</option>
                                 <option value="ครูผู้ช่วย">ครูผู้ช่วย</option>
                                 <option value="พนักงานราชการ">พนักงานราชการ</option>
                             </select>
@@ -550,18 +768,33 @@ $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->f
                                 </select>
                             </div>
                             <div class="space-y-1">
-                                <label class="block">ลำดับการเรียงลำดับ</label>
+                                <label class="block">ลำดับการจัดเรียงลำดับ</label>
                                 <input type="number" name="teacher_order" value="9" class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
                             </div>
                         </div>
 
-                        <div class="space-y-1">
-                            <label class="block">ลิงค์รูปหน้าผู้สอน (หรือปล่อยว่าง)</label>
-                            <input type="text" name="teacher_image" placeholder="https://images.unsplash.com/..." class="w-full rounded-xl border border-pink-100 p-2.5 text-xs font-medium focus:ring-1 focus:ring-school-pink outline-none">
+                        <!-- อัพโหลดรูปประจำตัวครู -->
+                        <div class="p-3 bg-pink-50/30 rounded-2xl border border-pink-100/50 space-y-1">
+                            <label class="block font-bold text-slate-800">1. รูปถ่ายข้าราชการครู</label>
+                            <input type="file" name="teacher_image_file" accept="image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-pink-100 file:text-school-pink">
+                            <input type="text" name="teacher_image" placeholder="หรือพิมพ์ลิงก์ที่อยู่รูปตรง..." class="w-full rounded-lg border border-pink-100 p-2 text-xs focus:ring-1 focus:ring-school-pink outline-none">
+                        </div>
+
+                        <!-- ระบบข้อตกลง PA และเว็บ Portfolio -->
+                        <div class="p-3 bg-pink-50/30 rounded-2xl border border-pink-100/50 space-y-2">
+                            <label class="block font-bold text-slate-800">2. รายงานข้อตกลง PA (Performance Agreement)</label>
+                            <input type="file" name="teacher_pa_file" accept=".pdf,.doc,.docx,.zip" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-pink-100 file:text-school-pink">
+                            <input type="text" name="teacher_pa_url" placeholder="หรือสอดลิงก์รายงานแบบแฝงภายนอก (เช่น Google Drive)..." class="w-full rounded-lg border border-pink-100 p-2 text-xs focus:ring-1 focus:ring-school-pink outline-none">
+                        </div>
+
+                        <div class="p-3 bg-pink-50/30 rounded-2xl border border-pink-100/50 space-y-2">
+                            <label class="block font-bold text-slate-800">3. แฟ้มผลงานทางวิชาการ (Portfolio)</label>
+                            <input type="file" name="teacher_portfolio_file" accept=".pdf,.doc,.docx,.zip,image/*" class="w-full text-[10px] text-slate-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-pink-100 file:text-school-pink">
+                            <input type="text" name="teacher_portfolio_url" placeholder="หรือสอดลิงก์แฟ้มสะสมงานภายนอก (เช่น Canva/Drive)..." class="w-full rounded-lg border border-pink-100 p-2 text-xs focus:ring-1 focus:ring-school-pink outline-none">
                         </div>
 
                         <button type="submit" class="w-full bg-school-pink hover:bg-school-pink-dark text-white font-black py-2.5 rounded-xl transition shadow text-xs">
-                            ลงทะเบียนประวัติครูเข้าระบบตาราง
+                            ลงทะเบียนประวัติข้าราชการครูและบันทึกข้อมูลผลงาน
                         </button>
                     </form>
                 </div>

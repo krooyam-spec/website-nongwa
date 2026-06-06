@@ -138,6 +138,25 @@ try {
               `active` tinyint(4) DEFAULT '1',
               PRIMARY KEY (`id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ",
+        'student_stats' => "
+            CREATE TABLE IF NOT EXISTS `student_stats` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `grade_name` varchar(50) NOT NULL UNIQUE,
+              `student_count` int(11) NOT NULL DEFAULT '0',
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ",
+        'external_links' => "
+            CREATE TABLE IF NOT EXISTS `external_links` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `title` varchar(255) NOT NULL,
+              `description` text DEFAULT NULL,
+              `url_link` varchar(255) NOT NULL,
+              `image_url` varchar(255) DEFAULT NULL,
+              `category` varchar(100) DEFAULT 'สื่อการเรียนรู้',
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         "
     ];
 
@@ -150,13 +169,20 @@ try {
     // มีตารางแล้ว อัปเดตคอลัมน์พิเศษเพิ่มเติม (Column Auto-Healing)
     $column_migrations = [
         'settings' => [
-            'school_motto' => "ALTER TABLE `settings` ADD COLUMN `school_motto` varchar(255) DEFAULT 'ชมพู-ขาว ก้าวไกลวิชาการ' AFTER `school_theme_color`"
+            'school_motto' => "ALTER TABLE `settings` ADD COLUMN `school_motto` varchar(255) DEFAULT 'ชมพู-ขาว ก้าวไกลวิชาการ' AFTER `school_theme_color`",
+            'school_logo' => "ALTER TABLE `settings` ADD COLUMN `school_logo` varchar(255) DEFAULT NULL AFTER `school_motto`",
+            'banner_bg_image' => "ALTER TABLE `settings` ADD COLUMN `banner_bg_image` varchar(255) DEFAULT NULL AFTER `school_logo`",
+            'banner_right_image' => "ALTER TABLE `settings` ADD COLUMN `banner_right_image` varchar(255) DEFAULT NULL AFTER `banner_bg_image`"
         ],
         'news' => [
             'sticky_flag' => "ALTER TABLE `news` ADD COLUMN `sticky_flag` tinyint(1) DEFAULT '0' AFTER `views`"
         ],
         'downloads' => [
             'file_url' => "ALTER TABLE `downloads` ADD COLUMN `file_url` varchar(255) DEFAULT NULL AFTER `file_size`"
+        ],
+        'teachers' => [
+            'pa_link_url' => "ALTER TABLE `teachers` ADD COLUMN `pa_link_url` varchar(255) DEFAULT NULL AFTER `image_url`",
+            'portfolio_url' => "ALTER TABLE `teachers` ADD COLUMN `portfolio_url` varchar(255) DEFAULT NULL AFTER `pa_link_url`"
         ]
     ];
 
@@ -236,6 +262,30 @@ try {
             (3, 'รายงานการประเมินตนเองของสถานศึกษา SAR ปีการศึกษา 2568', 'ประกันคุณภาพ', 'PDF', '8.1 MB', 92, '2026-04-10', '#'),
             (4, 'ข้อตกลงในการพัฒนางาน PA สำหรับครูสายการสอน (ตัวอย่างไฟล์แก้ไขได้)', 'เอกสารครู', 'WORD', '520 KB', 231, '2026-05-02', '#');");
         $message_log[] = "📋 คลังดาวน์โหลดจัดตั้งคลังเอกสารโรงเรียน (Downloads Archive) โหลดแล้ว";
+    }
+
+    $countStudentStats = $pdo->query("SELECT id FROM `student_stats` LIMIT 1")->fetch();
+    if (!$countStudentStats) {
+        $pdo->exec("INSERT INTO `student_stats` (`grade_name`, `student_count`) VALUES 
+            ('อนุบาล 2', 45),
+            ('อนุบาล 3', 48),
+            ('ประถมศึกษาปีที่ 1', 56),
+            ('ประถมศึกษาปีที่ 2', 52),
+            ('ประถมศึกษาปีที่ 3', 54),
+            ('ประถมศึกษาปีที่ 4', 59),
+            ('ประถมศึกษาปีที่ 5', 58),
+            ('ประถมศึกษาปีที่ 6', 60);");
+        $message_log[] = "📊 ยอดรายงานสถิติแต่ละชั้นปี (Student Stats) จัดทำตารางแล้ว";
+    }
+
+    $countExternalLinks = $pdo->query("SELECT id FROM `external_links` LIMIT 1")->fetch();
+    if (!$countExternalLinks) {
+        $pdo->exec("INSERT INTO `external_links` (`id`, `title`, `description`, `url_link`, `image_url`, `category`) VALUES 
+            (1, 'ระบบคลังสื่อเทคโนโลยีสารสนเทศ OBEC Content Center', 'แหล่งรวบรวมสื่อการเรียนรู้ดิจิทัลหลากหลายประเภทสำหรับครูและนักเรียน', 'https://contentcenter.obec.go.th', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=300', 'สื่อการเรียนรู้'),
+            (2, 'ระบบสารสนเทศเพื่อการจัดการศึกษา EMIS', 'ระบบจัดเก็บข้อมูลนักเรียนรายบุคคลและสารสนเทศโรงเรียน', 'https://emis.obec.go.th', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=300', 'งานครูและลิงก์หน่วยงาน'),
+            (3, 'DLTV มูลนิธิการศึกษาทางไกลผ่านดาวเทียม', 'รับชมการเรียนการสอนทางไกลและดาวน์โหลดสื่อประกอบการสอนปฐมวัย-ประถม', 'https://www.dltv.ac.th', 'https://images.unsplash.com/photo-1516534775068-ba3e84589d90?auto=format&fit=crop&q=80&w=300', 'สื่อการเรียนรู้'),
+            (4, 'ระบบปัจจัยพื้นฐานนักเรียนยากจนพิเศษ CCT', 'บันทึกคุณลักษณะและการดำเนินงานจัดสรรงบประมาณช่วยเหลือนักเรียน', 'https://www.cct.or.th', 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&q=80&w=300', 'งานครูและลิงก์หน่วยงาน');");
+        $message_log[] = "🔗 ลิงก์สื่อภายนอกและงานครูที่สำคัญของโรงเรียน (External Links Hub) ติดตั้งเสร็จสมบูรณ์";
     }
 
 } catch (PDOException $e) {

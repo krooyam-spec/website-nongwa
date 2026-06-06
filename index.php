@@ -80,10 +80,38 @@ try {
 try {
     $downloads_list = $pdo->query("SELECT * FROM `downloads` ORDER BY `id` DESC")->fetchAll();
     $students_list = $pdo->query("SELECT * FROM `students` ORDER BY `id` ASC")->fetchAll();
+    
+    // ดึงสถิตินักเรียนและสื่อภายนอกเพิ่มเติม
+    $student_stats = $pdo->query("SELECT * FROM `student_stats` ORDER BY `id` ASC")->fetchAll();
+    $external_links_list = $pdo->query("SELECT * FROM `external_links` ORDER BY `id` ASC")->fetchAll();
 } catch (Exception $e) {
     $downloads_list = [];
     $students_list = [];
+    $student_stats = [];
+    $external_links_list = [];
 }
+
+// หากตารางไม่มีข้อมูลหรือเกิดข้อผิดพลาด ให้กำหนดค่าเริ่มต้น
+if (empty($student_stats)) {
+    $student_stats = [
+        ['grade_name' => 'อนุบาล 2', 'student_count' => 45],
+        ['grade_name' => 'อนุบาล 3', 'student_count' => 48],
+        ['grade_name' => 'ประถมศึกษาปีที่ 1', 'student_count' => 56],
+        ['grade_name' => 'ประถมศึกษาปีที่ 2', 'student_count' => 52],
+        ['grade_name' => 'ประถมศึกษาปีที่ 3', 'student_count' => 54],
+        ['grade_name' => 'ประถมศึกษาปีที่ 4', 'student_count' => 59],
+        ['grade_name' => 'ประถมศึกษาปีที่ 5', 'student_count' => 58],
+        ['grade_name' => 'ประถมศึกษาปีที่ 6', 'student_count' => 60]
+    ];
+}
+
+// คำนวณยอดรวมนักเรียนทั้งหมดเพื่อให้ระบบแสดงค่าสถิติสัมพันธ์ตรงจริง
+$total_students_count = 0;
+foreach ($student_stats as $st) {
+    $total_students_count += intval($st['student_count']);
+}
+$boy_count_computed = round($total_students_count * 0.49);
+$girl_count_computed = $total_students_count - $boy_count_computed;
 
 // นับเพศนักเรียน
 $boy_count = 0;
@@ -167,27 +195,36 @@ foreach ($students_list as $std) {
     <header class="bg-white/90 backdrop-blur sticky top-0 z-40 border-b border-pink-100 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <a href="index.php" class="flex items-center gap-3 group">
-                <div class="h-12 w-12 rounded-full bg-gradient-to-tr from-school-pink to-pink-300 flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 transition-all">
-                    นห
-                </div>
+                <?php if (!empty($settings['school_logo'])): ?>
+                    <img id="school_logo_main" src="<?php echo htmlspecialchars($settings['school_logo']); ?>" alt="School Logo" class="h-12 w-12 object-contain rounded-full shadow-md group-hover:scale-105 transition-all" referrerPolicy="no-referrer">
+                <?php else: ?>
+                    <div id="school_logo_placeholder" class="h-12 w-12 rounded-full bg-gradient-to-tr from-school-pink to-pink-300 flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 transition-all">
+                        นห
+                    </div>
+                <?php endif; ?>
                 <div>
-                    <h1 class="font-heading font-extrabold text-lg text-slate-900 leading-none group-hover:text-school-pink transition-colors">
+                     <h1 class="font-heading font-extrabold text-base sm:text-lg text-slate-900 leading-none group-hover:text-school-pink transition-colors">
                         <?php echo htmlspecialchars($settings['school_name']); ?>
                     </h1>
-                    <p class="text-[10px] text-slate-500 font-medium tracking-wide uppercase mt-1">
+                    <p class="text-[9px] text-slate-500 font-medium tracking-wide uppercase mt-1">
                         สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)
                     </p>
                 </div>
             </a>
 
             <!--เมนูหลัก-->
-            <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-700">
+            <nav class="hidden lg:flex items-center gap-5 text-xs font-bold text-slate-700">
                 <a href="#news" class="hover:text-school-pink transition">ข่าวประชาสัมพันธ์</a>
                 <a href="#teachers" class="hover:text-school-pink transition">ทำเนียบครู</a>
+                <a href="pa_reports.php" class="text-slate-800 hover:text-school-pink transition flex items-center gap-1 bg-pink-100/50 hover:bg-pink-100/80 px-3 py-1.5 rounded-lg border border-pink-200/50">
+                    <span class="w-1.5 h-1.5 bg-school-pink rounded-full animate-ping"></span>
+                    บันทึกผลการปฏิบัติงาน (PA)
+                </a>
+                <a href="#school-tools" class="hover:text-school-pink transition">สื่อและระบบงานครู</a>
                 <a href="#stats" class="hover:text-school-pink transition">ข้อมูลสถิติ</a>
                 <a href="#documents" class="hover:text-school-pink transition">คลังเอกสาร</a>
-                <a href="login.php" class="bg-school-pink hover:bg-school-pink-dark text-white text-xs px-4 py-2 rounded-xl shadow-md font-bold transition flex items-center gap-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                <a href="login.php" class="bg-school-pink hover:bg-school-pink-dark text-white text-[11px] px-3.5 py-2 rounded-xl shadow-md font-bold transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
                     ระบบแอดมิน
                 </a>
             </nav>
@@ -195,37 +232,50 @@ foreach ($students_list as $std) {
     </header>
 
     <!-- 3. HERO BANNER AREA -->
-    <section class="relative bg-slate-900 overflow-hidden min-h-[460px] flex items-center">
-        <?php if (!empty($banners)): ?>
-            <!-- ภาพแบนเนอร์นิ่ง (จำลองสไตล์แอนิเมชันสำหรับ PHP) -->
-            <div class="absolute inset-0 z-0">
-                <img src="<?php echo htmlspecialchars($banners[0]['image_url']); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-35 filter brightness-75">
-            </div>
-        <?php endif; ?>
-        <div class="absolute inset-0 bg-gradient-to-r from-school-pink-dark/95 via-slate-950/80 to-transparent z-10"></div>
+    <?php
+    $banner_bg = !empty($settings['banner_bg_image']) ? $settings['banner_bg_image'] : (!empty($banners) ? $banners[0]['image_url'] : 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&q=80&w=1200');
+    $banner_right = !empty($settings['banner_right_image']) ? $settings['banner_right_image'] : 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=600';
+    ?>
+    <section class="relative bg-slate-900 overflow-hidden min-h-[460px] flex items-center py-12 md:py-16">
+        <div class="absolute inset-0 z-0">
+            <img src="<?php echo htmlspecialchars($banner_bg); ?>" alt="Banner Background" class="w-full h-full object-cover opacity-30 filter brightness-50" referrerPolicy="no-referrer">
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-r from-school-pink-dark/95 via-slate-950/85 to-transparent z-10"></div>
         
-        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-white space-y-6">
-            <span class="inline-block bg-white text-school-pink text-[10px] tracking-widest uppercase font-black px-4 py-1.5 rounded-full shadow-lg">
-                ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ
-            </span>
-            
-            <h2 class="text-4xl sm:text-6xl font-heading font-black leading-tight">
-                <?php echo htmlspecialchars($settings['school_name']); ?>
-            </h2>
-            
-            <p class="text-lg max-w-xl text-slate-200 font-light leading-relaxed">
-                "<?php echo htmlspecialchars($settings['school_motto']); ?>"<br>
-                เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น: 
-                <span class="text-white font-semibold underline decoration-pink-400"><?php echo htmlspecialchars($settings['levels']); ?></span>
-            </p>
+        <div class="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col lg:flex-row items-center justify-between gap-12 w-full text-white">
+            <div class="space-y-6 max-w-2xl">
+                <span class="inline-block bg-white text-school-pink text-[10px] tracking-widest uppercase font-black px-4 py-1.5 rounded-full shadow-lg">
+                    ยินดีต้อนรับสู่รั้วชมพู-ขาว แหล่งการศึกษาระดับเยาวชนต้นแบบ
+                </span>
+                
+                <h2 class="text-3.5xl sm:text-5.5xl font-heading font-black leading-tight">
+                    <?php echo htmlspecialchars($settings['school_name']); ?>
+                </h2>
+                
+                <p class="text-base max-w-xl text-slate-200 font-light leading-relaxed">
+                    "<?php echo htmlspecialchars($settings['school_motto']); ?>"<br>
+                    เน้นทักษะชีวิต ความดีงาม คุณธรรมสูงส่ง ส่งผ่านความใส่ใจในระดับชั้น: 
+                    <span class="text-white font-semibold underline decoration-pink-400"><?php echo htmlspecialchars($settings['levels']); ?></span>
+                </p>
 
-            <div class="flex flex-wrap gap-4 pt-4">
-                <a href="#news" class="bg-school-pink hover:bg-school-pink-dark text-white px-8 py-3.5 rounded-2xl font-bold shadow-lg shadow-pink-500/20 transition flex items-center gap-2">
-                    อ่านข่าวสารล่าสุด
-                </a>
-                <a href="#teachers" class="bg-white/10 hover:bg-white/15 text-white backdrop-blur px-8 py-3.5 rounded-2xl font-semibold border border-white/20 transition">
-                    ทำเนียบข้าราชการครู
-                </a>
+                <div class="flex flex-wrap gap-4 pt-2">
+                    <a href="#news" class="bg-school-pink hover:bg-school-pink-dark text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-pink-500/20 transition flex items-center gap-2 text-sm">
+                        อ่านข่าวสารล่าสุด
+                    </a>
+                    <a href="#teachers" class="bg-white/10 hover:bg-white/15 text-white backdrop-blur px-6 py-3 rounded-2xl font-semibold border border-white/20 transition text-sm">
+                        ทำเนียบข้าราชการครู
+                    </a>
+                </div>
+            </div>
+
+            <!-- ภาพที่ตั้งตังไว้ด้านขวามือและปรับแก้ไขอัพโหลดไฟล์ได้ -->
+            <div class="hidden lg:block max-w-sm w-full relative z-20">
+                <div class="relative p-2 rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-300">
+                    <img id="banner_right_img" src="<?php echo htmlspecialchars($banner_right); ?>" alt="Banner Right Highlight" class="w-full h-64 object-cover rounded-2xl shadow-inner border border-white/10" referrerPolicy="no-referrer">
+                    <div class="absolute -bottom-3 -right-3 bg-pink-500 font-bold text-[10px] uppercase text-white px-3 py-1 rounded-full shadow-lg">
+                        อัตลักษณ์ ชมพู-ขาว
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -239,7 +289,7 @@ foreach ($students_list as $std) {
                 </div>
                 <div>
                     <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">นักเรียนทั้งหมด</div>
-                    <div class="text-2xl font-heading font-black text-slate-800"><?php echo count($students_list) + 332; ?> คน</div>
+                    <div class="text-2xl font-heading font-black text-slate-800"><?php echo htmlspecialchars($total_students_count); ?> คน</div>
                 </div>
             </div>
             
@@ -312,8 +362,8 @@ foreach ($students_list as $std) {
         <section id="news" class="space-y-6 scroll-mt-24">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h3 class="text-3xl font-heading font-extrabold text-slate-900 leading-none">ศูนย์วิจัยข่าวประชาสัมพันธ์และกิจกรรม</h3>
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2 block">กองบรรณาธิการข่าวและประชาสัมพันธ์รอบรั้วชมพูขาว</p>
+                    <h3 class="text-3xl font-heading font-extrabold text-slate-900 leading-none">ข่าวประชาสัมพันธ์และกิจกรรมของโรงเรียน</h3>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2 block">กองบรรณาธิการข่าวและประชาสัมพันธ์รอบรั้วชมพูขาว โรงเรียนบ้านหนองหว้า</p>
                 </div>
                 <!-- ตัวเลือกกรองข่าว -->
                 <div class="flex flex-wrap gap-2">
@@ -423,12 +473,12 @@ foreach ($students_list as $std) {
                 <div class="flex gap-4 justify-between items-center py-6">
                     <div class="text-center flex-1 py-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
                         <span class="text-blue-500 font-black text-3xl">ชาย</span>
-                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo $boy_count + 164; ?> คน</div>
+                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo htmlspecialchars($boy_count_computed); ?> คน</div>
                         <span class="text-[10px] text-slate-400 font-bold">ประมาณ 49%</span>
                     </div>
                     <div class="text-center flex-1 py-4 bg-pink-50/50 rounded-2xl border border-pink-100/50">
                         <span class="text-school-pink font-black text-3xl">หญิง</span>
-                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo $girl_count + 168; ?> คน</div>
+                        <div class="text-lg font-black text-slate-800 mt-1"><?php echo htmlspecialchars($girl_count_computed); ?> คน</div>
                         <span class="text-[10px] text-slate-400 font-bold">ประมาณ 51%</span>
                     </div>
                 </div>
@@ -455,26 +505,17 @@ foreach ($students_list as $std) {
                 <!-- ออกแบบแบบแท่งความหนาแน่นเชิงกราฟิก -->
                 <div class="space-y-4 pt-2">
                     <?php
-                    $grades_demo = [
-                        'อนุบาล 2' => ['total' => 45, 'percent' => '45%'],
-                        'อนุบาล 3' => ['total' => 48, 'percent' => '48%'],
-                        'ประถมศึกษาปีที่ 1' => ['total' => 56, 'percent' => '56%'],
-                        'ประถมศึกษาปีที่ 2' => ['total' => 52, 'percent' => '52%'],
-                        'ประถมศึกษาปีที่ 3' => ['total' => 54, 'percent' => '54%'],
-                        'ประถมศึกษาปีที่ 4' => ['total' => 59, 'percent' => '59%'],
-                        'ประถมศึกษาปีที่ 5' => ['total' => 58, 'percent' => '58%'],
-                        'ประถมศึกษาปีที่ 6' => ['total' => 60, 'percent' => '60%']
-                    ];
-
-                    foreach ($grades_demo as $grade_name => $g_info):
+                    foreach ($student_stats as $st):
+                        $st_count = intval($st['student_count']);
+                        $percent = $total_students_count > 0 ? round(($st_count / $total_students_count) * 100) : 0;
                     ?>
                         <div class="space-y-1">
                             <div class="flex justify-between text-xs font-bold">
-                                <span class="text-slate-800"><?php echo $grade_name; ?></span>
-                                <span class="text-school-pink font-extrabold"><?php echo $g_info['total']; ?> คน</span>
+                                <span class="text-slate-800"><?php echo htmlspecialchars($st['grade_name']); ?></span>
+                                <span class="text-school-pink font-extrabold"><?php echo htmlspecialchars($st_count); ?> คน</span>
                             </div>
                             <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-r from-pink-300 to-school-pink h-full rounded-full" style="width: <?php echo $g_info['percent']; ?>;"></div>
+                                <div class="bg-gradient-to-r from-pink-300 to-school-pink h-full rounded-full" style="width: <?php echo $percent; ?>%;"></div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -482,11 +523,46 @@ foreach ($students_list as $std) {
             </div>
         </section>
 
+        <!-- 5.4.5 แหล่งเรียนรู้และลิงก์ระบบงานภายนอก (Custom External Links Grid) -->
+        <section id="school-tools" class="space-y-6 scroll-mt-24">
+            <div>
+                <h3 class="text-3xl font-heading font-extrabold text-slate-900 leading-none">แหล่งเรียนรู้และระบบงานบริการออนไลน์</h3>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2 block">สื่อพัฒนานวัตกรรมการสอนและเครือข่ายความร่วมมือทางการศึกษา</p>
+            </div>
+            
+            <?php if (empty($external_links_list)): ?>
+                <div class="bg-white rounded-3xl p-8 text-center text-slate-400 border border-slate-100">
+                    ยังไม่มีข้อมูลลิงก์ภายนอกเสริมการเรียนรู้
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <?php foreach ($external_links_list as $link): ?>
+                        <a href="<?php echo htmlspecialchars($link['url']); ?>" target="_blank" class="bg-white rounded-2xl p-5 border border-pink-50/50 shadow-sm hover:shadow-md hover:border-school-pink/20 transition-all flex gap-4 group">
+                            <div class="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-slate-100 shadow-sm">
+                                <img src="<?php echo htmlspecialchars($link['image_url'] ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=200'); ?>" alt="<?php echo htmlspecialchars($link['title']); ?>" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" referrerPolicy="no-referrer">
+                            </div>
+                            <div class="space-y-1 select-none">
+                                <span class="inline-block bg-pink-50 text-school-pink text-[9px] font-black px-2 py-0.5 rounded uppercase">
+                                    <?php echo htmlspecialchars($link['category'] ?? 'บริการออนไลน์'); ?>
+                                </span>
+                                <h4 class="font-heading font-bold text-slate-800 text-sm group-hover:text-school-pink transition-colors line-clamp-1">
+                                    <?php echo htmlspecialchars($link['title']); ?>
+                                </h4>
+                                <p class="text-slate-400 text-[11px] font-medium leading-tight line-clamp-2">
+                                    <?php echo htmlspecialchars($link['description'] ?? 'คลิกเข้าสู่แหล่งนวัตกรรมภายนอกโรงเรียนบ้านหนองหว้า'); ?>
+                                </p>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </section>
+
         <!-- 5.5 ศูนย์คลังจัดซื้อจัดจ้างและแผนงานแผนพัฒนา (Downloads and Procurements DB) -->
         <section id="documents" class="space-y-6 scroll-mt-24">
             <div>
-                <h3 class="text-3xl font-heading font-extrabold text-slate-900 leading-none">ศูนย์คลังแผนงานและเอกสารจัดซื้อจัดจ้าง</h3>
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2 block">ความโปร่งใส ความสุจริต และความสะดวกสำหรับครูและประชาชน</p>
+                <h3 class="text-3xl font-heading font-extrabold text-slate-900 leading-none">เอกสารและแผนงานของโรงเรียน</h3>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest mt-2 block">คลังเอกสารราชการ แผนปฏิบัติการ และข่าวจัดซื้อจัดจ้าง โรงเรียนบ้านหนองหว้า</p>
             </div>
 
             <!-- ตารางคลังไฟล์ -->
@@ -548,9 +624,13 @@ foreach ($students_list as $std) {
             <!-- คอลัมน์ที่ 1: ชื่อโรงเรียน -->
             <div class="space-y-4">
                 <div class="flex items-center gap-2">
-                    <div class="h-10 w-10 rounded-full bg-white flex items-center justify-center text-school-pink font-black text-sm">
-                        นห
-                    </div>
+                    <?php if (!empty($settings['school_logo'])): ?>
+                        <img src="<?php echo htmlspecialchars($settings['school_logo']); ?>" alt="School Footer Logo" class="h-10 w-10 object-contain rounded-full bg-white p-0.5 shadow referrerPolicy="no-referrer">
+                    <?php else: ?>
+                        <div class="h-10 w-10 rounded-full bg-white flex items-center justify-center text-school-pink font-black text-sm">
+                            นห
+                        </div>
+                    <?php endif; ?>
                     <h4 class="font-heading font-extrabold text-white text-base leading-none"><?php echo htmlspecialchars($settings['school_name']); ?></h4>
                 </div>
                 <p class="text-[11px] leading-relaxed font-light text-slate-400">
