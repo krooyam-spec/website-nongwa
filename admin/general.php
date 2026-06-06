@@ -137,9 +137,9 @@ if (!defined('DB_HOST')) {
                     </div>
                 </div>
 
-                <!-- ภาพหน้าโบกแต่งแบนเนอร์ด้านขวา -->
+                <!-- ภาพหน้าโบกแต่งแบนเนอร์ด้านซ้าย -->
                 <div class="bg-pink-50/10 border border-pink-100/60 rounded-2xl p-4 space-y-3">
-                    <span class="block text-slate-700 font-bold">3. กราฟิก/ภาพแต่งหน้าแบนเนอร์ขวา</span>
+                    <span class="block text-slate-700 font-bold">3. กราฟิก/ภาพแต่งหน้าแบนเนอร์ซ้าย (Banner Left Highlight)</span>
                     <?php if (!empty($settings['banner_right_image'])): ?>
                         <img src="<?php echo htmlspecialchars($settings['banner_right_image']); ?>" class="w-20 h-16 object-contain mx-auto bg-white p-1 rounded-lg border border-pink-100">
                     <?php endif; ?>

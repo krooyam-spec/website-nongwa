@@ -91,7 +91,37 @@ try {
         }
     }
 
-    // 7. จัดตั้งและเพิ่มตารางจัดเก็บสถิตินักเรียนแยกปีการศึกษา (Student Yearly Stats Table Alignment)
+    // 7. จัดตั้งและเพิ่มตารางจัดเก็บรายชื่อนักเรียนและข้อมูลสถิติที่จำเป็น (Auto-healing for student tables)
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `students` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(150) NOT NULL,
+      `grade` varchar(50) NOT NULL,
+      `classroom` varchar(10) NOT NULL,
+      `gender` varchar(10) NOT NULL,
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `student_stats` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `grade_name` varchar(50) NOT NULL UNIQUE,
+      `student_count` int(11) NOT NULL DEFAULT '0',
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    $check_students_empty = $pdo->query("SELECT id FROM `students` LIMIT 1")->fetch();
+    if (!$check_students_empty) {
+        $pdo->exec("INSERT INTO `students` (`id`, `name`, `grade`, `classroom`, `gender`) VALUES 
+            (1, 'เด็กชายจิรายุ สมพงษ์', 'ประถมศึกษาปีที่ 6', '6/1', 'ชาย'),
+            (2, 'เด็กหญิงรัตนาภรณ์ แสนดี', 'ประถมศึกษาปีที่ 6', '6/1', 'หญิง'),
+            (3, 'เด็กหญิงนภัสสร แก้วมณี', 'ประถมศึกษาปีที่ 5', '5/1', 'หญิง'),
+            (4, 'เด็กชายชินดนัย มีสุข', 'ประถมศึกษาปีที่ 4', '4/1', 'ชาย'),
+            (5, 'เด็กหญิงพิชชาภา เกิดดี', 'ประถมศึกษาปีที่ 3', '3/1', 'หญิง'),
+            (6, 'เด็กหญิงกานต์พิชชา ผลเจริญ', 'ประถมศึกษาปีที่ 2', '2/1', 'หญิง'),
+            (7, 'เด็กชายอนุรักษ์ รักเรียน', 'ประถมศึกษาปีที่ 1', '1/1', 'ชาย'),
+            (8, 'เด็กหญิงมัทนา งามศิลป์', 'อนุบาล 3', 'อ.3/1', 'หญิง');");
+    }
+
+    // จัดตั้งและเพิ่มตารางจัดเก็บสถิตินักเรียนแยกปีการศึกษา (Student Yearly Stats Table Alignment)
     $pdo->exec("CREATE TABLE IF NOT EXISTS `student_yearly_stats` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
       `academic_year` varchar(10) NOT NULL,
