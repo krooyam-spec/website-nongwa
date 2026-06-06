@@ -726,24 +726,25 @@ app.post("/api/ai/doc-search", (req: Request, res: Response) => {
 =========================================
 */
 
-if (process.env.NODE_ENV !== "production") {
-  const setupVite = async () => {
+async function startServer() {
+  if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  };
-  setupVite();
-} else {
-  const distPath = path.join(process.cwd(), "dist");
-  app.use(express.static(distPath));
-  app.get("*", (req: Request, res: Response) => {
-    res.sendFile(path.join(distPath, "index.html"));
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  // Start Server Listen
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[BAN NONG WA] Full-stack Server running at http://localhost:${PORT}`);
   });
 }
 
-// Start Server Listen
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[BAN NONG WA] Full-stack Server running at http://localhost:${PORT}`);
-});
+startServer();
